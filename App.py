@@ -121,11 +121,11 @@ class CalculatorView(ctk.CTk):
     def create_standard_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "="],
+            ["CE", "M", "DEL", "H"],
             ["1", "2", "3", "+"],
             ["4", "5", "6", "-"],
             ["7", "8", "9", "*"],
-            [".", "0", "(", ")"],
+            [".", "0", "/", "="],
         ]
         self.create_button_grid(button_layout)
 
