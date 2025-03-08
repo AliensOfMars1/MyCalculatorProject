@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 import tkinter as tk
 import re
 from tkinter import font
+import os
 
 
 # Set theme and appearance mode
@@ -18,6 +19,8 @@ ctk.set_default_color_theme("blue")  # Blue theme
 class CalculatorModel:
     def __init__(self):
         self.memory = ""  # initialize the memory storage
+        self.history_file = "history.txt"  # File for history
+        self.history = self.load_history()  # Load history at startup
 
 
       # Evaluates mathematical expressions excluding built-in functions so eval() is can be safely used.      
@@ -32,9 +35,31 @@ class CalculatorModel:
                 "log2": math.log2, "log10": math.log10, "degrees": math.degrees, "radians": math.radians,
             })
             self.memory = str(result)  # Store last result
+            self.save_to_history(expression, result) # save the exp and result to history
             return result
         except Exception:
             return "Error"
+        
+    def save_to_history(self, expression, result):
+        entry = f"{expression} = {result}\n"
+        with open(self.history_file, "a") as file:
+            file.write(entry)
+        if self.history is None:
+            self.history =[]
+
+        self.history.append(entry.strip()) # Append a clean entry to the history list 
+
+
+    def load_history(self):
+        if os.path.exists(self.history_file):
+            with open(self.history_file, "r") as file: #open the file in read mode 
+                return file.readlines()
+        return [] # If no file exists, initialize an empty list
+        
+    def get_history(self):
+        return "".join(self.history[-10:]) if self.history else "No history available."  
+        #Returns the last 10 calculations as a string. If history is empty, return a message.      
+
 
     # Removes the last entered character.
     def delete_last(self, expression):
@@ -121,7 +146,7 @@ class CalculatorView(ctk.CTk):
     def create_standard_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "H"],
+            ["CE", "M", "DEL", "HISTORY"],
             ["1", "2", "3", "+"],
             ["4", "5", "6", "-"],
             ["7", "8", "9", "*"],
@@ -187,7 +212,7 @@ class CalculatorView(ctk.CTk):
 
     def validate_input(self, new_text):
         """Allow only numbers, operators, scientific functions, and specific letters."""
-        valid_chars = valid_chars = re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|sinh|degrees|radians)?$")
+        valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|sinh|degrees|radians)?$")
 
         
         # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
@@ -239,6 +264,8 @@ class CalculatorController:
         elif button_text == "=":
             result = self.model.evaluate(current_text)
             self.view.update_display(str(result))  # Evaluates the expression and displays results
+        elif button_text == "HISTORY":
+            messagebox.showinfo("History", self.model.get_history()) #Displays the last 10 calculations     
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
     # Runs the calculator.
