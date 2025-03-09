@@ -58,8 +58,11 @@ class CalculatorModel:
         
     def get_history(self):
         return "".join(self.history[-10:]) if self.history else "No history available."  
-        #Returns the last 10 calculations as a string. If history is empty, return a message.      
+        #Returns the last 10 calculations as a string. If history is empty, return a message. 
 
+    def clear_history(self):
+        open(self.history_file, "w").close()  # Overwrite file with nothing
+        self.history = []  # Clear the loaded history   
 
     # Removes the last entered character.
     def delete_last(self, expression):
@@ -122,6 +125,8 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Copy", command=self.copy_text)
         self.settings_menu.add_command(label="Cut", command=self.cut_text)
         self.settings_menu.add_command(label="Paste", command=self.paste_text)
+        self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
+
 
         #Settings button
         self.settings_button = ctk.CTkButton(self, text="⚙️", width=40, height=28)
@@ -269,6 +274,11 @@ class CalculatorController:
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
     # Runs the calculator.
+    def clear_history(self):
+        """Clears history and notifies the user."""
+        self.model.clear_history()
+        messagebox.showinfo("History", "Calculation history cleared successfully!")
+
     def run(self):
         self.view.mainloop()
 #-----------------------------------------------Controller end-----------------------------------------------
