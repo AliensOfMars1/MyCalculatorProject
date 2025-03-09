@@ -95,6 +95,8 @@ class CalculatorView(ctk.CTk):
         self.iconbitmap("favicon.ico") #set the window icon
         self.resizable(width=False, height=False)
 
+     #.....................................key bindings...............................................
+
 
         # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
@@ -118,6 +120,17 @@ class CalculatorView(ctk.CTk):
 
         self.entry.pack(fill="both", padx=10, pady=10)
         
+
+        # Create the right-click context menu
+        self.context_menu = tk.Menu(self, tearoff=0)
+        self.context_menu.add_command(label="Cut", command=self.cut_text)
+        self.context_menu.add_command(label="Copy", command=self.copy_text)
+        self.context_menu.add_command(label="Paste", command=self.paste_text)
+        self.context_menu.add_separator()  # Separator line
+        self.context_menu.add_command(label="Clear History", command=self.controller.clear_history)
+        # Bind right-click event to show the menu
+        self.entry.bind("<Button-3>", self.show_context_menu)  # Windows/Linux
+        self.entry.bind("<Control-Button-1>", self.show_context_menu) # MacOS        
 
 
         #"Settings" drop-down menu
@@ -214,6 +227,15 @@ class CalculatorView(ctk.CTk):
             self.settings_button.winfo_rooty() + self.settings_button.winfo_height()
         )
 
+    def show_context_menu(self, event):
+        # Create the right-click menu
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label="Cut", command=self.cut_text)
+        menu.add_command(label="Copy", command=self.copy_text)
+        menu.add_command(label="Paste", command=self.paste_text)
+        menu.add_separator()
+        menu.add_command(label="Clear History", command=self.controller.clear_history)
+        menu.tk_popup(event.x_root, event.y_root) # Display menu at mouse position
 
     def validate_input(self, new_text):
         """Allow only numbers, operators, scientific functions, and specific letters."""
@@ -223,6 +245,10 @@ class CalculatorView(ctk.CTk):
         # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
 
+
+    #Show the right-click menu at the cursor position.
+    def show_context_menu(self, event):
+        self.context_menu.post(event.x_root, event.y_root)
 
     # Copy text from the entry field.
     def copy_text(self):
@@ -273,9 +299,9 @@ class CalculatorController:
             messagebox.showinfo("History", self.model.get_history()) #Displays the last 10 calculations     
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
-    # Runs the calculator.
+
+    # Clears the history and notifies the user when the "clear History button is clicked"
     def clear_history(self):
-        """Clears history and notifies the user."""
         self.model.clear_history()
         messagebox.showinfo("History", "Calculation history cleared successfully!")
 
