@@ -33,12 +33,23 @@ class CalculatorModel:
                 "sqrt": math.sqrt, "pow": math.pow, "pi": math.pi, "e": math.e,
                 "cosh": math.cosh, "tanh": math.tanh, "sinh": math.sinh, "exp": math.exp,
                 "log2": math.log2, "log10": math.log10, "degrees": math.degrees, "radians": math.radians,
+                "expm1" : math.expm1 , "pow": math.pow, "factorial" : math.factorial
             })
             self.memory = str(result)  # Store last result
             self.save_to_history(expression, result) # save the exp and result to history
             return result
-        except Exception:
-            return "Error"
+        except SyntaxError:
+            return "Syntax Error: Check expression format!"
+        except ZeroDivisionError:
+            return "Math Error: Division by zero!"
+        except ValueError:
+            return "Math Error: Invalid input for function!"
+        except TypeError:
+            return "Type Error: Incorrect number format!"
+        except AttributeError:
+            return "Function Error: Invalid operation!"
+        except Exception as e:
+            return f"Error: {str(e)}"
         
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
@@ -186,11 +197,11 @@ class CalculatorView(ctk.CTk):
     def create_scientific_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "=","sin", "cos", "tan"],
-            ["1", "2", "3" ,"+","sqrt", "log", "pi"],
-            ["4", "5", "6","-","log2", "log10", "degrees"],
-            ["7", "8", "9","*","radians","cosh", "tanh"],
-            [".", "0", ",", "/","e", "sinh", "exp"],
+            ["CE", "M", "DEL", "=","sin", "cos", "tan", "exp"],
+            ["1", "2", "3" ,"+","sinh", "cosh", "tanh", "expm1"],
+            ["4", "5", "6","-","log", "log2", "log10", "factorial"],
+            ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
+            [".", "0", ",", "/","e", "pi","(", ")"],
  
         ]
         self.create_button_grid(button_layout, scientific=True)        
@@ -215,13 +226,13 @@ class CalculatorView(ctk.CTk):
 
     def update_geometry(self): #Update the window size based on the mode such that the buttons fit
         if self.mode == "Scientific":
-            self.geometry("800x600+355+40")
+            self.geometry("1000x600+200+40")
         else:
             self.geometry("480x600+600+40")
 
     def update_history_button_position(self): #Update the history button position based on the mode so it fits
         if self.mode == "Scientific":
-            self.history_button.place(x=750, y=84)
+            self.history_button.place(x=950, y=84)
         else:
             self.history_button.place(x=430, y=84)        
 
@@ -264,7 +275,7 @@ class CalculatorView(ctk.CTk):
         # Create validation command
     def validate_input(self, new_text):
         #Allow only numbers, operators, scientific functions, and specific letters.
-        valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|sinh|degrees|radians)?$")
+        valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|expm1|pow|factorial|sinh|degrees|radians)?$")
       
         # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
