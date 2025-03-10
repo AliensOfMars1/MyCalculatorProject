@@ -49,7 +49,6 @@ class CalculatorModel:
 
         self.history.append(entry.strip()) # Append a clean entry to the history list 
 
-
     def load_history(self):
         if os.path.exists(self.history_file):
             with open(self.history_file, "r") as file: #open the file in read mode 
@@ -57,7 +56,7 @@ class CalculatorModel:
         return [] # If no file exists, initialize an empty list
         
     def get_history(self):
-        return "".join(self.history[-10:]) if self.history else "No history available."  
+        return "\n".join(self.history[-10:]) if self.history else "No history available."  
         #Returns the last 10 calculations as a string. If history is empty, return a message. 
 
     def clear_history(self):
@@ -91,12 +90,23 @@ class CalculatorView(ctk.CTk):
         super().__init__()
         self.controller = controller
         self.title("Calculator")
-        self.geometry("480x600+250+40")  # Fixed UI size 
+        self.geometry("480x600+600+40")  # Fixed UI size 
         self.iconbitmap("favicon.ico") #set the window icon
         self.resizable(width=False, height=False)
 
+        # Load the history icon image.
+        self.history_icon = ctk.CTkImage(
+            light_image=Image.open("historyicon.png"),
+            dark_image=Image.open("historyicon.png"),
+            size=(20, 20)
+        )
+        # Load the history icon image.
+        self.settings_icon = ctk.CTkImage(
+            light_image=Image.open("settingsicon.png"),
+            dark_image=Image.open("settingsicon.png"),
+            size=(20, 20)
+        )
      #.....................................key bindings...............................................
-
 
         # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
@@ -117,21 +127,18 @@ class CalculatorView(ctk.CTk):
             height=60, corner_radius=10, justify="right",
             validate="key", validatecommand=vcmd  # Enable real-time validation
         )
-
         self.entry.pack(fill="both", padx=10, pady=10)
         
-
-        # Create the right-click context menu
-        self.context_menu = tk.Menu(self, tearoff=0)
+        # A right-click context menu
+        self.context_menu = tk.Menu(self, tearoff=0) # 
         self.context_menu.add_command(label="Cut", command=self.cut_text)
         self.context_menu.add_command(label="Copy", command=self.copy_text)
         self.context_menu.add_command(label="Paste", command=self.paste_text)
         self.context_menu.add_separator()  # Separator line
         self.context_menu.add_command(label="Clear History", command=self.controller.clear_history)
-        # Bind right-click event to show the menu
+        # Binding right-click event to show the menu
         self.entry.bind("<Button-3>", self.show_context_menu)  # Windows/Linux
         self.entry.bind("<Control-Button-1>", self.show_context_menu) # MacOS        
-
 
         #"Settings" drop-down menu
         self.settings_menu = tk.Menu(self, tearoff=0)
@@ -140,11 +147,15 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Paste", command=self.paste_text)
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
 
-
         #Settings button
-        self.settings_button = ctk.CTkButton(self, text="⚙️", width=40, height=28)
+        self.settings_button = ctk.CTkButton(self, text="",image= self.settings_icon, width=40, height=28)
         self.settings_button.place(x=10, y=84)
         self.settings_button.configure(command=self.show_menu)
+        
+        #History button 
+        self.history_button = ctk.CTkButton(self, text="", image= self.history_icon, width=40, height= 28)
+        self.history_button.place(x=430, y=84)
+        self.history_button.configure(command=lambda: messagebox.showinfo("History", self.controller.model.get_history()))
 
         # Mode toggle switch
         self.mode = "Standard"
@@ -164,27 +175,25 @@ class CalculatorView(ctk.CTk):
     def create_standard_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "HISTORY"],
-            ["1", "2", "3", "+"],
-            ["4", "5", "6", "-"],
-            ["7", "8", "9", "*"],
-            [".", "0", "/", "="],
-        ]
-        self.create_button_grid(button_layout)
-
-    # Function to create scientific buttons
-    def create_scientific_buttons(self):
-        self.clear_buttons()
-        button_layout = [
             ["CE", "M", "DEL", "="],
             ["1", "2", "3", "+"],
             ["4", "5", "6", "-"],
             ["7", "8", "9", "*"],
-            [".", "0", "(", ")"],
-            ["sin", "cos", "tan", "/"],
-            ["sqrt", "log", "pi", "e"]
+            [".", "0", ",", "/"],
         ]
-        self.create_button_grid(button_layout, scientific=True)
+        self.create_button_grid(button_layout)
+
+    def create_scientific_buttons(self):
+        self.clear_buttons()
+        button_layout = [
+            ["CE", "M", "DEL", "=","sin", "cos", "tan"],
+            ["1", "2", "3" ,"+","sqrt", "log", "pi"],
+            ["4", "5", "6","-","log2", "log10", "degrees"],
+            ["7", "8", "9","*","radians","cosh", "tanh"],
+            [".", "0", ",", "/","e", "sinh", "exp"],
+ 
+        ]
+        self.create_button_grid(button_layout, scientific=True)        
 
     # Creates button grid
     def create_button_grid(self, button_layout, scientific=False):
@@ -204,21 +213,36 @@ class CalculatorView(ctk.CTk):
         for widget in self.button_frame.winfo_children():
             widget.destroy()
 
+    def update_geometry(self): #Update the window size based on the mode such that the buttons fit
+        if self.mode == "Scientific":
+            self.geometry("800x600+355+40")
+        else:
+            self.geometry("480x600+600+40")
+
+    def update_history_button_position(self): #Update the history button position based on the mode so it fits
+        if self.mode == "Scientific":
+            self.history_button.place(x=750, y=84)
+        else:
+            self.history_button.place(x=430, y=84)        
+
     # Toggle between Standard & Scientific Mode using the switch
     def toggle_mode(self):
         if self.switch_var.get() == "Scientific":
             self.mode = "Scientific"
+            self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Standard")
             self.create_scientific_buttons()
+            self.update_history_button_position()
         else:
             self.mode = "Standard"
+            self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Scientific")
             self.create_standard_buttons()
-
+            self.update_history_button_position()
+ 
     # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
-
 
     # Displays the settings menu at the position of the settings button.
     def show_menu(self):
@@ -237,14 +261,13 @@ class CalculatorView(ctk.CTk):
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root) # Display menu at mouse position
 
+        # Create validation command
     def validate_input(self, new_text):
-        """Allow only numbers, operators, scientific functions, and specific letters."""
+        #Allow only numbers, operators, scientific functions, and specific letters.
         valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|sinh|degrees|radians)?$")
-
-        
+      
         # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
-
 
     #Show the right-click menu at the cursor position.
     def show_context_menu(self, event):
@@ -294,16 +317,18 @@ class CalculatorController:
             self.view.update_display(self.model.recall_memory())  # Recalls stored value
         elif button_text == "=":
             result = self.model.evaluate(current_text)
-            self.view.update_display(str(result))  # Evaluates the expression and displays results
-        elif button_text == "HISTORY":
-            messagebox.showinfo("History", self.model.get_history()) #Displays the last 10 calculations     
+            self.view.update_display(str(result))  # Evaluates the expression and displays results     
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
+
     # Clears the history and notifies the user when the "clear History button is clicked"
     def clear_history(self):
-        self.model.clear_history()
-        messagebox.showinfo("History", "Calculation history cleared successfully!")
+        # Ask the user to confirm deletion
+        confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to clear the history?")
+        if confirm:
+            self.model.clear_history()
+            messagebox.showinfo("History", "Calculation history cleared successfully!")
 
     def run(self):
         self.view.mainloop()
