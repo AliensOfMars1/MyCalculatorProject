@@ -118,6 +118,12 @@ class CalculatorView(ctk.CTk):
             size=(20, 20)
         )
      #.....................................key bindings...............................................
+        #bind escape key to clear the display 
+        self.bind("<Escape>", lambda event: self.controller.on_button_click("CE"))
+
+        # Bind "h" or "H" to show history 
+        self.bind( "H", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
+        self.bind( "h", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
 
         # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
