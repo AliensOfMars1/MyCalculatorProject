@@ -7,6 +7,7 @@ import tkinter as tk
 import re
 from tkinter import font
 import os
+import json
 
 
 # Set theme and appearance mode
@@ -21,6 +22,8 @@ class CalculatorModel:
         self.memory = ""  # initialize the memory storage
         self.history_file = "history.txt"  # File for history
         self.history = self.load_history()  # Load history at startup
+        self.memory_file = "memory.json" #file for memory storage
+        # self.memory_stack= self.load_memory() #load memory at startup
 
 
       # Evaluates mathematical expressions excluding built-in functions so eval() is can be safely used.      
@@ -56,8 +59,7 @@ class CalculatorModel:
         with open(self.history_file, "a") as file:
             file.write(entry)
         if self.history is None:
-            self.history =[]
-
+            self.history =[] #initialize an empty list if history is empty
         self.history.append(entry.strip()) # Append a clean entry to the history list 
 
     def load_history(self):
@@ -65,7 +67,7 @@ class CalculatorModel:
             with open(self.history_file, "r") as file: #open the file in read mode 
                 return file.readlines()
         return [] # If no file exists, initialize an empty list
-        
+
     def get_history(self):
         return "\n".join(self.history[-10:]) if self.history else "No history available."  
         #Returns the last 10 calculations as a string. If history is empty, return a message. 
@@ -73,6 +75,35 @@ class CalculatorModel:
     def clear_history(self):
         open(self.history_file, "w").close()  # Overwrite file with nothing
         self.history = []  # Clear the loaded history   
+
+    def load_stack(self):
+        if os.path.exists(self.memory_file):
+            with open(self.memory_file, "r") as file:  # Open the file in read mode
+                try:
+                    return json.load(file)  # Load JSON data
+                except json.JSONDecodeError:
+                    return []  # If the file is empty or corrupt, return an empty list
+        return []  # If no file exists, initialize an empty list
+    
+    # Function to save the stack to the JSON file
+    def save_stack(self, stack):
+        with open(self.memory_file, "w") as file:
+            json.dump(stack, file, indent=4)
+
+    # Adds a value to the memory stack (M+).
+    def memory_plus(self, value):
+        stack = self.load_stack()
+        stack.append(value)
+        self.save_stack(stack)
+    
+    # Retrieves and removes the latest value from the memory stack (M-).
+    def memory_minus(self):
+        stack = self.load_stack()
+        if not stack:
+            return "Memory stack is empty!"
+        latest_value = stack.pop()  # Get and remove the last stored value
+        self.save_stack(stack)
+        return latest_value
 
     # Removes the last entered character.
     def delete_last(self, expression):
@@ -130,8 +161,8 @@ class CalculatorView(ctk.CTk):
         self.bind("=", lambda event: self.controller.on_button_click("="))
 
         # Bind "m" and "M" to recall memory
-        self.bind("m", lambda event: self.controller.on_button_click("M"))
-        self.bind("M", lambda event: self.controller.on_button_click("M"))
+        self.bind("A", lambda event: self.controller.on_button_click("ANS"))
+        self.bind("a", lambda event: self.controller.on_button_click("ANS"))
 
         # Entry widget to display expression / results (calculator screen)
         self.expression = ctk.StringVar()
@@ -188,27 +219,28 @@ class CalculatorView(ctk.CTk):
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
 
-    # Function to create standard/basic buttons
+    # Function to create standard/basic buttons with added M+ and M- buttons.
     def create_standard_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "="],
+            ["CE", "ANS", "DEL", "="],
             ["1", "2", "3", "+"],
             ["4", "5", "6", "-"],
             ["7", "8", "9", "*"],
             [".", "0", ",", "/"],
+            ["M+", "M-"],  # New row for memory stack operations            
         ]
         self.create_button_grid(button_layout)
 
     def create_scientific_buttons(self):
         self.clear_buttons()
         button_layout = [
-            ["CE", "M", "DEL", "=","sin", "cos", "tan", "exp"],
+            ["CE", "ANS", "DEL", "=","sin", "cos", "tan", "exp"],
             ["1", "2", "3" ,"+","sinh", "cosh", "tanh", "expm1"],
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
             ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
             [".", "0", ",", "/","e", "pi","(", ")"],
- 
+            ["M+", "M-"],  # Add memory buttons in scientific mode as well            
         ]
         self.create_button_grid(button_layout, scientific=True)        
 
@@ -330,11 +362,19 @@ class CalculatorController:
             self.view.update_display("")  # Clears the display
         elif button_text == "DEL":
             self.view.update_display(self.model.delete_last(current_text))  # Deletes the last character
-        elif button_text == "M":
+        elif button_text == "ANS":
             self.view.update_display(self.model.recall_memory())  # Recalls stored value
         elif button_text == "=":
             result = self.model.evaluate(current_text)
-            self.view.update_display(str(result))  # Evaluates the expression and displays results     
+            self.view.update_display(str(result))  # Evaluates the expression and displays results
+        elif button_text == "M+":  # Add current display value to memory stack
+            value = self.view.expression.get()
+            self.model.memory_plus(value)
+            # Optionally, clear display or notify the user
+            self.view.update_display("")
+        elif button_text == "M-":  # Retrieve the latest value from memory stack
+            retrieved = self.model.memory_minus()
+            self.view.update_display(retrieved)       
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 

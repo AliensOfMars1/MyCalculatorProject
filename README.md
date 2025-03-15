@@ -1,4 +1,7 @@
 This Calculator is built with customtkinter + tkinter + python.
 It has two mode, a basic and Scientific mode. 
-It's a working prototype
-More features or updates will be added in the future
+ESCAPE KEY = clears the calculator screen
+A or a key fuctions same as ANS, when pressed will recall the last result.
+
+
+
