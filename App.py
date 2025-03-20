@@ -42,17 +42,19 @@ class CalculatorModel:
             self.save_to_history(expression, result) # save the exp and result to history
             return result
         except SyntaxError:
-            return "Syntax Error: Check expression format!"
+            messagebox.showinfo("ERROR", "Syntax Error: Check expression format!")
         except ZeroDivisionError:
-            return "Math Error: Division by zero!"
+            messagebox.showinfo("ERROR", "Math Error: Division by zero!") 
         except ValueError:
-            return "Math Error: Invalid input for function!"
+            messagebox.showinfo("ERROR", "Math Error: Invalid input for function!")
         except TypeError:
-            return "Type Error: Incorrect number format!"
+            messagebox.showinfo("ERROR", "Type Error: Incorrect number format!")
         except AttributeError:
-            return "Function Error: Invalid operation!"
+            messagebox.showinfo("ERROR", "Function Error: Invalid operation!") 
         except Exception as e:
             return f"Error: {str(e)}"
+        finally : 
+            return ""
         
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
@@ -117,8 +119,6 @@ class CalculatorModel:
     def clear_memory(self):
         self.memory = ""
 #-----------------------------------------------Model end-----------------------------------------------------
-
-
 
 
 
@@ -203,7 +203,7 @@ class CalculatorView(ctk.CTk):
         #History button 
         self.history_button = ctk.CTkButton(self, text="", image= self.history_icon, width=40, height= 28)
         self.history_button.place(x=430, y=84)
-        self.history_button.configure(command=lambda: messagebox.showinfo("History", self.controller.model.get_history()))
+        self.history_button.configure(command=self.show_scrollable_history_window)
 
         # Mode toggle switch
         self.mode = "Standard"
@@ -218,6 +218,33 @@ class CalculatorView(ctk.CTk):
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
+
+
+    def show_scrollable_history_window(self):
+        # Check if the toplevel window already exists
+        if hasattr(self, "history_window") and self.history_window.winfo_exists():
+            self.history_window.lift()  # Bring it to the front
+            return  # Exit the function if the window is already open
+
+        # Create a new Toplevel window for the history
+        self.history_window = ctk.CTkToplevel()
+        self.history_window.title("History")
+        self.history_window.geometry("200x300")
+
+        # Create a scrollable textbox
+        text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
+        text_widget.pack(pady=10, padx=10, fill="both", expand=True)
+
+        # Read the text file and insert its content
+        try:
+            with open("history.txt", "r", encoding="utf-8") as file:  # Change filename as needed
+                text_content = file.read()
+                text_widget.insert("1.0", text_content)  # Insert at the beginning
+        except FileNotFoundError:
+            text_widget.insert("1.0", "File not found!")
+
+        # Make the text read-only
+        text_widget.configure(state="disabled")    
 
     # Function to create standard/basic buttons with added M+ and M- buttons.
     def create_standard_buttons(self):
@@ -338,11 +365,8 @@ class CalculatorView(ctk.CTk):
         try:
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
-            pass  # Handle empty clipboard
+            pass  # Handle empty clipboard   
 #-----------------------------------------------View end----------------------------------------------------
-
-
-
 
 
 
