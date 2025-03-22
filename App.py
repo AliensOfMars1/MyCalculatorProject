@@ -53,9 +53,7 @@ class CalculatorModel:
             messagebox.showinfo("ERROR", "Function Error: Invalid operation!") 
         except Exception as e:
             return f"Error: {str(e)}"
-        finally : 
-            return ""
-        
+
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
         with open(self.history_file, "a") as file:
@@ -118,6 +116,8 @@ class CalculatorModel:
     # Clears stored memory.
     def clear_memory(self):
         self.memory = ""
+
+       
 #-----------------------------------------------Model end-----------------------------------------------------
 
 
@@ -165,7 +165,8 @@ class CalculatorView(ctk.CTk):
         self.bind("a", lambda event: self.controller.on_button_click("ANS"))
 
         # Entry widget to display expression / results (calculator screen)
-        self.expression = ctk.StringVar()
+        self.expression = ctk.StringVar() 
+   
         
         # Create validation command
         vcmd = (self.register(self.validate_input), "%P")
@@ -319,6 +320,13 @@ class CalculatorView(ctk.CTk):
     # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
+        self.check_and_clear()
+
+    def check_and_clear(self):
+        ctext = self.expression.get()
+        if ctext == "None":
+            self.update_display("")
+    
 
     # Displays the settings menu at the position of the settings button.
     def show_menu(self):
@@ -366,6 +374,8 @@ class CalculatorView(ctk.CTk):
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
             pass  # Handle empty clipboard   
+
+
 #-----------------------------------------------View end----------------------------------------------------
 
 
