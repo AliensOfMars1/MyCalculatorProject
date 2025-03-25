@@ -10,6 +10,7 @@ import os
 import json
 import requests # for API calls 
 from const import CONSTS
+import threading
 
 
 # Set theme and appearance mode
@@ -155,19 +156,20 @@ class CalculatorView(ctk.CTk):
         self.controller = controller
         self.title("Calculator")
         self.geometry("480x600+600+40")  # Fixed UI size 
-        self.iconbitmap("favicon.ico") #set the window icon
+        self.iconbitmap(CONSTS.CALCULATOR_ICON) #set the window icon
         self.resizable(width=False, height=False)
 
         # Load the history icon image.
-        self.history_icon = ctk.CTkImage(
-            light_image=Image.open("historyicon.png"),
-            dark_image=Image.open("historyicon.png"),
+        self.HISTORY_ICON = ctk.CTkImage( 
+            light_image = Image.open(CONSTS.HISTORY_ICON),
+            # light_image=Image.open("historyicon.png"),
+            dark_image=Image.open(r"C:\Users\USER\OneDrive\Desktop\9980 Calculator\assets\icons\historyicon.png"),
             size=(20, 20)
         )
         # Load the history icon image.
-        self.settings_icon = ctk.CTkImage(
-            light_image=Image.open("settingsicon.png"),
-            dark_image=Image.open("settingsicon.png"),
+        self.SETTINGS_ICON = ctk.CTkImage(
+            light_image=Image.open(CONSTS.SETTINGS_ICON),
+            dark_image=Image.open(CONSTS.SETTINGS_ICON),
             size=(20, 20)
         )
      #.....................................key bindings...............................................
@@ -216,14 +218,16 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Cut", command=self.cut_text)
         self.settings_menu.add_command(label="Paste", command=self.paste_text)
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
+        self.settings_menu.add_separator()  # Optional separator for clarity
+        self.settings_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
 
         #Settings button
-        self.settings_button = ctk.CTkButton(self, text="",image= self.settings_icon, width=40, height=28)
+        self.settings_button = ctk.CTkButton(self, text="",image= self.SETTINGS_ICON, width=40, height=28)
         self.settings_button.place(x=10, y=84)
         self.settings_button.configure(command=self.show_menu)
         
         #History button 
-        self.history_button = ctk.CTkButton(self, text="", image= self.history_icon, width=40, height= 28)
+        self.history_button = ctk.CTkButton(self, text="", image= self.HISTORY_ICON, width=40, height= 28)
         self.history_button.place(x=430, y=84)
         self.history_button.configure(command=self.show_scrollable_history_window)
 
@@ -241,6 +245,10 @@ class CalculatorView(ctk.CTk):
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
 
+        # ---- NEW: Loading Animation Variables ----
+        self.loading = False
+        self.loading_dots = ["", ".", "..", "..."]
+        self.loading_index = 0
 
     def force_cursor_right(self, event):
            self.entry.icursor(ctk.END)  # Moves cursor to the end (rightmost position) 
@@ -254,7 +262,7 @@ class CalculatorView(ctk.CTk):
         # Create a new Toplevel window for the history
         self.history_window = ctk.CTkToplevel()
         self.history_window.title("History")
-        self.history_window.geometry("200x300")
+        self.history_window.geometry("300x400")
 
         # Set the window as transient so it stays on top of the main window
         self.history_window.transient(self)
@@ -368,6 +376,7 @@ class CalculatorView(ctk.CTk):
         menu.add_separator()
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root) # Display menu at mouse position
+        
 
         # Create validation command
     def validate_input(self, new_text):
@@ -397,7 +406,32 @@ class CalculatorView(ctk.CTk):
         try:
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
-            pass  # Handle empty clipboard   
+            pass  # Handle empty clipboard
+
+    def toggle_theme(self):
+        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark" or "System")
+        # Toggle to the opposite theme (ignoring "System" for simplicity)
+        if current_mode == "Dark":
+            new_mode = "Light"
+        else:
+            new_mode = "Dark"
+        ctk.set_appearance_mode(new_mode)
+        messagebox.showinfo("THEME",f"Theme switched to {new_mode}")        
+
+    # Loading Animation Methods ----
+    def start_loading_animation(self):
+        self.loading = True
+        self.loading_index = 0
+        self.animate_loading()
+
+    def animate_loading(self):
+        if self.loading:
+            self.update_display(f"Loading{self.loading_dots[self.loading_index]}")
+            self.loading_index = (self.loading_index + 1) % len(self.loading_dots)
+            self.after(500, self.animate_loading)
+
+    def stop_loading_animation(self):
+        self.loading = False           
 
 
 #-----------------------------------------------View end----------------------------------------------------
@@ -433,28 +467,86 @@ class CalculatorController:
         elif button_text == "M-":  # Retrieve the latest value from memory stack
             retrieved = self.model.memory_minus()
             self.view.update_display(retrieved)
-        # Live currency conversion: USD to GHS
+
+        # --- NEW: Live currency conversion with loading animation ---
         elif button_text == "USD-GHS":
             try:
                 usd_value = float(current_text)
-                live_rate = self.model.fetch_live_usd_to_ghs_rate()
-                ghs_value = usd_value * live_rate
-                self.view.update_display(f"₵{str(ghs_value)}")
             except ValueError:
                 messagebox.showerror("Conversion Error", "Please enter a valid numeric value for USD.")
-        # Live currency conversion: GHS to USD
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_usd_to_ghs, args=(usd_value,))
+            thread.start()
         elif button_text == "GHS-USD":
             try:
                 ghs_value = float(current_text)
-                live_rate = self.model.fetch_live_usd_to_ghs_rate()
-                usd_value = ghs_value / live_rate
-                self.view.update_display(f"${str(usd_value)}")
             except ValueError:
-                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")             
-                       
+                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
+            thread.start()
+
+        elif button_text== "sin":
+            self.view.update_display("sin(")
+        elif button_text== "cos":
+            self.view.update_display("cos(")            
+        elif button_text== "tan":
+            self.view.update_display("tan(")
+        elif button_text== "exp":
+            self.view.update_display("exp(")
+        elif button_text== "sinh":
+            self.view.update_display("sinh(")
+        elif button_text== "cosh":
+            self.view.update_display("cosh(")  
+        elif button_text== "tanh":
+            self.view.update_display("tanh(")  
+        elif button_text== "expm1":
+            self.view.update_display("expm1(")  
+        elif button_text== "log":
+            self.view.update_display("log(")  
+        elif button_text== "log2":
+            self.view.update_display("log2(")  
+        elif button_text== "cos":
+            self.view.update_display("cos(")  
+        elif button_text== "log10":
+            self.view.update_display("log10(")  
+        elif button_text== "factorial":
+            self.view.update_display("factorial(")  
+        elif button_text== "radians":
+            self.view.update_display("radians(")
+        elif button_text== "degrees":
+            self.view.update_display("degrees(")               
+        elif button_text== "sqrt":
+            self.view.update_display("sqrt(")  
+        elif button_text== "pow":
+            self.view.update_display("pow(")                                                                                                                                                                                                                     
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
+    # NEW: Conversion methods run in separate threads
+    def convert_usd_to_ghs(self, usd_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            ghs_value = usd_value * live_rate
+            result_text = f"₵{ghs_value:.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def convert_ghs_to_usd(self, ghs_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            usd_value = ghs_value / live_rate
+            result_text = f"${usd_value:.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def finish_conversion(self, result_text):
+        self.view.stop_loading_animation()
+        self.view.update_display(result_text)
 
     # Clears the history and notifies the user when the "clear History button is clicked"
     def clear_history(self):

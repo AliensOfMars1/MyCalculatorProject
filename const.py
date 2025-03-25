@@ -1,4 +1,5 @@
 class CONSTS : 
-      SETTINGS_ICON = "/assets/icons/....png"
-      HISTORY_ICON = "/assets/icons/....png"
-      _ICON = "/assets/icons/....png"
+      SETTINGS_ICON = r"assets\icons\settingsicon.png"
+      HISTORY_ICON = r"assets\icons\historyicon.png"
+      CALCULATOR_ICON = r"assets\icons\calculator_icon.ico"
+  

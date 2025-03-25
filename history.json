@@ -10,5 +10,33 @@
     {
         "expression": "36+6",
         "result": 42
+    },
+    {
+        "expression": "log(36)",
+        "result": 3.58351893845611
+    },
+    {
+        "expression": "radians(69)",
+        "result": 1.2042771838760873
+    },
+    {
+        "expression": "10e+1",
+        "result": 100.0
+    },
+    {
+        "expression": "100e+100",
+        "result": 1e+102
+    },
+    {
+        "expression": "10*e",
+        "result": 27.18281828459045
+    },
+    {
+        "expression": "27.18281828459045*pi",
+        "result": 85.39734222673566
+    },
+    {
+        "expression": "degrees(10)",
+        "result": 572.9577951308232
     }
 ]
