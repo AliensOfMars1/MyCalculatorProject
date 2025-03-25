@@ -1,0 +1,14 @@
+[
+    {
+        "expression": "23+3",
+        "result": 26
+    },
+    {
+        "expression": "26",
+        "result": 26
+    },
+    {
+        "expression": "36+6",
+        "result": 42
+    }
+]
