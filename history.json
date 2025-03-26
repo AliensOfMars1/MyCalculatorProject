@@ -38,5 +38,13 @@
     {
         "expression": "degrees(10)",
         "result": 572.9577951308232
+    },
+    {
+        "expression": "25+3",
+        "result": 28
+    },
+    {
+        "expression": "2562+sin(326)+sinh(3)",
+        "result": 2571.354263593209
     }
 ]

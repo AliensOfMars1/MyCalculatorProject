@@ -416,7 +416,7 @@ class CalculatorView(ctk.CTk):
         else:
             new_mode = "Dark"
         ctk.set_appearance_mode(new_mode)
-        messagebox.showinfo("THEME",f"Theme switched to {new_mode}")        
+        messagebox.showinfo("THEME",f"Theme switched to {new_mode} Mode")        
 
     # Loading Animation Methods ----
     def start_loading_animation(self):
@@ -487,41 +487,10 @@ class CalculatorController:
             self.view.start_loading_animation()
             thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
             thread.start()
-
-        elif button_text== "sin":
-            self.view.update_display("sin(")
-        elif button_text== "cos":
-            self.view.update_display("cos(")            
-        elif button_text== "tan":
-            self.view.update_display("tan(")
-        elif button_text== "exp":
-            self.view.update_display("exp(")
-        elif button_text== "sinh":
-            self.view.update_display("sinh(")
-        elif button_text== "cosh":
-            self.view.update_display("cosh(")  
-        elif button_text== "tanh":
-            self.view.update_display("tanh(")  
-        elif button_text== "expm1":
-            self.view.update_display("expm1(")  
-        elif button_text== "log":
-            self.view.update_display("log(")  
-        elif button_text== "log2":
-            self.view.update_display("log2(")  
-        elif button_text== "cos":
-            self.view.update_display("cos(")  
-        elif button_text== "log10":
-            self.view.update_display("log10(")  
-        elif button_text== "factorial":
-            self.view.update_display("factorial(")  
-        elif button_text== "radians":
-            self.view.update_display("radians(")
-        elif button_text== "degrees":
-            self.view.update_display("degrees(")               
-        elif button_text== "sqrt":
-            self.view.update_display("sqrt(")  
-        elif button_text== "pow":
-            self.view.update_display("pow(")                                                                                                                                                                                                                     
+        #appending  Scientific operations with "(" to the existing text to aviod wiping the what's already on the screen ---
+        elif button_text in {"sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1", 
+                             "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "pow"}:
+            self.view.update_display(current_text + button_text + "(")                                                                                                                                                                                                              
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
