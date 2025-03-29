@@ -199,9 +199,10 @@ class CalculatorView(ctk.CTk):
         self.context_menu.add_command(label="Cut", command=self.cut_text)
         self.context_menu.add_command(label="Copy", command=self.copy_text)
         self.context_menu.add_command(label="Paste", command=self.paste_text)
-        self.context_menu.add_separator()  # Separator line
+        self.context_menu.add_separator()  # Optional separator for clarity
         self.context_menu.add_command(label="Clear History", command=self.controller.clear_history)
-        # Binding right-click event to show the menu
+        self.context_menu.add_separator()  # Optional separator for clarity
+        self.context_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
         self.entry.bind("<Button-3>", self.show_context_menu)  # Windows/Linux
         self.entry.bind("<Control-Button-1>", self.show_context_menu) # MacOS        
 
@@ -210,7 +211,10 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Copy", command=self.copy_text)
         self.settings_menu.add_command(label="Cut", command=self.cut_text)
         self.settings_menu.add_command(label="Paste", command=self.paste_text)
+        self.settings_menu.add_separator()  # Optional separator for clarity
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
+        self.settings_menu.add_separator()  # Optional separator for clarity
+        self.settings_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
 
         #Settings button
         self.settings_button = ctk.CTkButton(self, text="",image= self.SETTINGS_ICON, width=40, height=28)
@@ -395,6 +399,16 @@ class CalculatorView(ctk.CTk):
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
             pass  # Handle empty clipboard   
+
+    def toggle_theme(self):
+        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark" or "System")
+        # Toggle to the opposite theme (ignoring "System" for simplicity)
+        if current_mode == "Dark":
+            new_mode = "Light"
+        else:
+            new_mode = "Dark"
+        ctk.set_appearance_mode(new_mode)
+        messagebox.showinfo("THEME",f"Theme switched to {new_mode} Mode")   
 
     # Loading Animation Methods ----
     def start_loading_animation(self):
