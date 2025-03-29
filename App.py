@@ -8,6 +8,7 @@ import re
 from tkinter import font
 import os
 import json
+from const import CONSTS
 
 
 # Set theme and appearance mode
@@ -133,19 +134,20 @@ class CalculatorView(ctk.CTk):
         self.controller = controller
         self.title("Calculator")
         self.geometry("480x600+600+40")  # Fixed UI size 
-        self.iconbitmap("favicon.ico") #set the window icon
+        self.iconbitmap(CONSTS.CALCULATOR_ICON) #set the window icon
         self.resizable(width=False, height=False)
 
         # Load the history icon image.
-        self.history_icon = ctk.CTkImage(
-            light_image=Image.open("historyicon.png"),
-            dark_image=Image.open("historyicon.png"),
+        self.HISTORY_ICON = ctk.CTkImage( 
+            light_image = Image.open(CONSTS.HISTORY_ICON),
+            # light_image=Image.open("historyicon.png"),
+            dark_image=Image.open(CONSTS.HISTORY_ICON),
             size=(20, 20)
         )
         # Load the history icon image.
-        self.settings_icon = ctk.CTkImage(
-            light_image=Image.open("settingsicon.png"),
-            dark_image=Image.open("settingsicon.png"),
+        self.SETTINGS_ICON = ctk.CTkImage(
+            light_image=Image.open(CONSTS.SETTINGS_ICON),
+            dark_image=Image.open(CONSTS.SETTINGS_ICON),
             size=(20, 20)
         )
      #.....................................key bindings...............................................
@@ -197,12 +199,12 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
 
         #Settings button
-        self.settings_button = ctk.CTkButton(self, text="",image= self.settings_icon, width=40, height=28)
+        self.settings_button = ctk.CTkButton(self, text="",image= self.SETTINGS_ICON, width=40, height=28)
         self.settings_button.place(x=10, y=84)
         self.settings_button.configure(command=self.show_menu)
         
         #History button 
-        self.history_button = ctk.CTkButton(self, text="", image= self.history_icon, width=40, height= 28)
+        self.history_button = ctk.CTkButton(self, text="", image= self.HISTORY_ICON, width=40, height= 28)
         self.history_button.place(x=430, y=84)
         self.history_button.configure(command=self.show_scrollable_history_window)
 
