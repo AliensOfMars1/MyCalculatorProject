@@ -149,7 +149,7 @@ class CalculatorView(ctk.CTk):
         self.title("Calculator")
         self.geometry("480x600+600+40")  # Fixed UI size 
         self.iconbitmap(CONSTS.CALCULATOR_ICON) #set the window icon
-        self.resizable(width=False, height=False)
+        self.resizable(width=True, height=True)
 
         # Load the history icon image.
         self.HISTORY_ICON = ctk.CTkImage( 
@@ -461,7 +461,11 @@ class CalculatorController:
                 return
             self.view.start_loading_animation()
             thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
-            thread.start()            
+            thread.start()
+        #appending  Scientific operations with "(" to the existing text so the user will only have to close them wit ')' ---
+        elif button_text in {"sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1", 
+                             "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "pow"}:
+            self.view.update_display(current_text + button_text + "(")                            
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
