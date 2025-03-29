@@ -9,6 +9,8 @@ from tkinter import font
 import os
 import json
 from const import CONSTS
+import requests
+import threading
 
 
 # Set theme and appearance mode
@@ -25,6 +27,18 @@ class CalculatorModel:
         self.history = self.load_history()  # Load history at startup
         self.memory_file = "memory.json" #file for memory storage
         # self.memory_stack= self.load_memory() #load memory at startup
+
+    def fetch_live_usd_to_ghs_rate(self):
+        try:
+            response = requests.get("https://api.exchangerate-api.com/v4/latest/USD") #API for live exchange rate, 
+            data = response.json()
+            live_rate = data["rates"].get("GHS")
+            if live_rate:
+                return live_rate
+            else:
+                raise ValueError("GHS rate not found in API response.")
+        except Exception as e:
+            messagebox.showerror("No internet connection.", "Failed to get live rate. \nPLEASE CHECK YOUR INTERNET CONNECTION!")        
 
 
       # Evaluates mathematical expressions excluding built-in functions so eval() is can be safely used.      
@@ -222,6 +236,11 @@ class CalculatorView(ctk.CTk):
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
 
+        # ---- NEW: Loading Animation Variables ----
+        self.loading = False
+        self.loading_dots = ["", ".", "..", "..."]
+        self.loading_index = 0
+
 
     def show_scrollable_history_window(self):
         # Check if the toplevel window already exists
@@ -270,7 +289,7 @@ class CalculatorView(ctk.CTk):
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
             ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
             [".", "0", ",", "/","e", "pi","(", ")"],
-            ["M+", "M-"],  # Add memory buttons in scientific mode as well            
+            ["M+", "M-" ,"USD-GHS", "GHS-USD"],  # Added currency exchange buttons in scientific mode.        
         ]
         self.create_button_grid(button_layout, scientific=True)        
 
@@ -377,7 +396,20 @@ class CalculatorView(ctk.CTk):
         except tk.TclError:
             pass  # Handle empty clipboard   
 
+    # Loading Animation Methods ----
+    def start_loading_animation(self):
+        self.loading = True
+        self.loading_index = 0
+        self.animate_loading()
 
+    def animate_loading(self):
+        if self.loading:
+            self.update_display(f"Loading{self.loading_dots[self.loading_index]}")
+            self.loading_index = (self.loading_index + 1) % len(self.loading_dots)
+            self.after(500, self.animate_loading)
+
+    def stop_loading_animation(self):
+        self.loading = False   
 #-----------------------------------------------View end----------------------------------------------------
 
 
@@ -410,10 +442,51 @@ class CalculatorController:
             self.view.update_display("")
         elif button_text == "M-":  # Retrieve the latest value from memory stack
             retrieved = self.model.memory_minus()
-            self.view.update_display(retrieved)       
+            self.view.update_display(retrieved) 
+        # --- Live currency conversion with loading animation ---
+        elif button_text == "USD-GHS":
+            try:
+                usd_value = float(current_text)
+            except ValueError:
+                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for USD.")
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_usd_to_ghs, args=(usd_value,))
+            thread.start()
+        elif button_text == "GHS-USD":
+            try:
+                ghs_value = float(current_text)
+            except ValueError:
+                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
+            thread.start()            
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
+    # NEW: Conversion methods run in separate threads
+    def convert_usd_to_ghs(self, usd_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            ghs_value = usd_value * live_rate
+            result_text = f"₵{ghs_value:.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def convert_ghs_to_usd(self, ghs_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            usd_value = ghs_value / live_rate
+            result_text = f"${usd_value:.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def finish_conversion(self, result_text):
+        self.view.stop_loading_animation()
+        self.view.update_display(result_text)
 
     # Clears the history and notifies the user when the "clear History button is clicked"
     def clear_history(self):
