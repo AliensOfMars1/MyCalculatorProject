@@ -40,12 +40,12 @@ class CalculatorModel:
         except Exception as e:
             messagebox.showerror("No internet connection.", "Failed to get live rate. \nPLEASE CHECK YOUR INTERNET CONNECTION!")        
 
-
-      # Evaluates mathematical expressions excluding built-in functions so eval() is can be safely used.      
     def evaluate(self, expression): 
         try:
+            # Remove commas to prevent eval() from misinterpreting the formatted result
+            expression = expression.replace(",", "")
             if not expression.strip():  # If the expression is empty or only spaces
-                    return 0  # Return 0 instead of evaluating
+                return 0  # Return 0 instead of evaluating
             result = eval(expression, {"__builtins__": None}, {
                 "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log,
                 "sqrt": math.sqrt, "pow": math.pow, "pi": math.pi, "e": math.e,
@@ -69,10 +69,11 @@ class CalculatorModel:
         except Exception as e:
             return f"Error: {str(e)}"
 
+
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
         with open(self.history_file, "a") as file:
-            file.write(entry)
+            file.write(f"{entry}\n")
         if self.history is None:
             self.history =[] #initialize an empty list if history is empty
         self.history.append(entry.strip()) # Append a clean entry to the history list 
@@ -115,7 +116,8 @@ class CalculatorModel:
     def memory_minus(self):
         stack = self.load_stack()
         if not stack:
-            return "Memory stack is empty!"
+            messagebox.showinfo("EMPTY", "Oops, No memory stored!")# return "Memory stack is empty!"
+            return ""
         latest_value = stack.pop()  # Get and remove the last stored value
         self.save_stack(stack)
         return latest_value
@@ -138,7 +140,6 @@ class CalculatorModel:
 
 
 
-
 #-----------------------------------------------View start----------------------------------------------------
 # VIEW: Handles UI
 
@@ -149,7 +150,7 @@ class CalculatorView(ctk.CTk):
         self.title("Calculator")
         self.geometry("480x600+600+40")  # Fixed UI size 
         self.iconbitmap(CONSTS.CALCULATOR_ICON) #set the window icon
-        self.resizable(width=True, height=True)
+        self.resizable(width=False, height=False)
 
         # Load the history icon image.
         self.HISTORY_ICON = ctk.CTkImage( 
@@ -190,8 +191,10 @@ class CalculatorView(ctk.CTk):
         self.entry = ctk.CTkEntry(
             self, textvariable=self.expression, font=("Lucida Console",24),
             height=60, corner_radius=10, justify="right",
-            validate="key", validatecommand=vcmd  # Enable real-time validation
+            validate="key", validatecommand=vcmd   # Enable real-time validation
         )
+        # self.entry.configure(state="disabled")
+        # self.entry.configure(state="readonly")
         self.entry.pack(fill="both", padx=10, pady=10)
         
         # A right-click context menu
@@ -256,6 +259,12 @@ class CalculatorView(ctk.CTk):
         self.history_window = ctk.CTkToplevel()
         self.history_window.title("History")
         self.history_window.geometry("200x300")
+        # Set the window as transient so it stays on top of the main window
+        self.history_window.transient(self)
+        self.history_window.grab_set()  # Prevents interaction with the main window until closed
+        self.history_window.attributes("-topmost", True)  # Forces it to be on top
+        self.history_window.lift()  # Bring to front
+        self.history_window.focus_force()  
 
         # Create a scrollable textbox
         text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
@@ -345,14 +354,11 @@ class CalculatorView(ctk.CTk):
     # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
-        self.check_and_clear()
-
-    def check_and_clear(self):
         ctext = self.expression.get()
         if ctext == "None":
             self.update_display("")
-    
 
+    
     # Displays the settings menu at the position of the settings button.
     def show_menu(self):
         self.settings_menu.post(
@@ -383,22 +389,35 @@ class CalculatorView(ctk.CTk):
         self.context_menu.post(event.x_root, event.y_root)
 
     # Copy text from the entry field.
+
     def copy_text(self):
         self.clipboard_clear()
         self.clipboard_append(self.entry.get())
-        self.update()
+        self.update()         
 
-    # Cuts text from the entry field.
     def cut_text(self):
-        self.copy_text()
-        self.entry.delete(0, "end")
+        try:
+            # Enable editing temporarily
+            self.entry.configure(state="normal")
+            self.copy_text()  # Copy the current content
+            self.entry.delete(0, "end")  # Delete all text
+        finally:
+            # Revert back to readonly to maintain non-editable display
+            self.entry.configure(state="readonly")    
+
 
     # Pastes text from the clipboard into the entry field.
     def paste_text(self):
         try:
+            # Enable editing temporarily
+            self.entry.configure(state="normal")            
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
-            pass  # Handle empty clipboard   
+            pass  # Handle empty clipboard
+        finally:
+            # Revert back to readonly to maintain non-editable display
+            self.entry.configure(state="readonly")
+           
 
     def toggle_theme(self):
         current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark" or "System")
@@ -447,8 +466,11 @@ class CalculatorController:
         elif button_text == "ANS":
             self.view.update_display(self.model.recall_memory())  # Recalls stored value
         elif button_text == "=":
-            result = self.model.evaluate(current_text)
-            self.view.update_display(str(result))  # Evaluates the expression and displays results
+            try:
+                result = self.model.evaluate(current_text)
+                self.view.update_display(f"{result:,}")  # Evaluates the expression and displays results
+            except TypeError:
+                self.view.update_display("")
         elif button_text == "M+":  # Add current display value to memory stack
             value = self.view.expression.get()
             self.model.memory_plus(value)
@@ -488,7 +510,7 @@ class CalculatorController:
         live_rate = self.model.fetch_live_usd_to_ghs_rate()
         if live_rate:
             ghs_value = usd_value * live_rate
-            result_text = f"₵{ghs_value:.2f}"
+            result_text = f"₵{ghs_value:,.2f}"
         else:
             result_text = ""
         self.view.after(0, lambda: self.finish_conversion(result_text))
@@ -497,7 +519,7 @@ class CalculatorController:
         live_rate = self.model.fetch_live_usd_to_ghs_rate()
         if live_rate:
             usd_value = ghs_value / live_rate
-            result_text = f"${usd_value:.2f}"
+            result_text = f"${usd_value:,.2f}"
         else:
             result_text = ""
         self.view.after(0, lambda: self.finish_conversion(result_text))
