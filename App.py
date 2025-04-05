@@ -9,6 +9,8 @@ from tkinter import font
 import os
 import json
 from const import CONSTS
+import requests
+import threading
 
 
 # Set theme and appearance mode
@@ -26,12 +28,24 @@ class CalculatorModel:
         self.memory_file = "memory.json" #file for memory storage
         # self.memory_stack= self.load_memory() #load memory at startup
 
+    def fetch_live_usd_to_ghs_rate(self):
+        try:
+            response = requests.get(CONSTS.CURRENCY_API_URL) #API for live exchange rate, 
+            data = response.json()
+            live_rate = data["rates"].get("GHS")
+            if live_rate:
+                return live_rate
+            else:
+                raise ValueError("GHS rate not found in API response.")
+        except Exception as e:
+            messagebox.showerror("No internet connection.", "Failed to get live rate. \nPLEASE CHECK YOUR INTERNET CONNECTION!")        
 
-      # Evaluates mathematical expressions excluding built-in functions so eval() is can be safely used.      
     def evaluate(self, expression): 
         try:
+            # Remove commas to prevent eval() from misinterpreting the formatted result
+            expression = expression.replace(",", "")
             if not expression.strip():  # If the expression is empty or only spaces
-                    return 0  # Return 0 instead of evaluating
+                return 0  # Return 0 instead of evaluating
             result = eval(expression, {"__builtins__": None}, {
                 "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log,
                 "sqrt": math.sqrt, "pow": math.pow, "pi": math.pi, "e": math.e,
@@ -58,7 +72,7 @@ class CalculatorModel:
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
         with open(self.history_file, "a") as file:
-            file.write(entry)
+            file.write(f"{entry}\n")
         if self.history is None:
             self.history =[] #initialize an empty list if history is empty
         self.history.append(entry.strip()) # Append a clean entry to the history list 
@@ -101,7 +115,8 @@ class CalculatorModel:
     def memory_minus(self):
         stack = self.load_stack()
         if not stack:
-            return "Memory stack is empty!"
+            messagebox.showinfo("EMPTY", "Oops, No memory stored!")# return "Memory stack is empty!"
+            return ""
         latest_value = stack.pop()  # Get and remove the last stored value
         self.save_stack(stack)
         return latest_value
@@ -120,9 +135,6 @@ class CalculatorModel:
 
        
 #-----------------------------------------------Model end-----------------------------------------------------
-
-
-
 
 
 #-----------------------------------------------View start----------------------------------------------------
@@ -150,33 +162,45 @@ class CalculatorView(ctk.CTk):
             dark_image=Image.open(CONSTS.SETTINGS_ICON),
             size=(20, 20)
         )
+
      #.....................................key bindings...............................................
         #bind escape key to clear the display 
         self.bind("<Escape>", lambda event: self.controller.on_button_click("CE"))
 
-        # Bind "h" or "H" to show history 
-        self.bind( "H", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
-        self.bind( "h", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
+        # Binding ctrl plus "h" or "H" to show history 
+        self.bind( "<Control-H>", lambda event: self.show_scrollable_history_window())
+        self.bind( "<Control-h>", lambda event: self.show_scrollable_history_window())
+
+        #binding ctrl plus T or t to switch between light and dark mode
+        self.bind( "<Control-T>", lambda event: self.toggle_theme())
+        self.bind( "<Control-t>", lambda event: self.toggle_theme())
+
+        #Binding backspace to delete the last entered character 
+        self.bind("<BackSpace>", lambda event: self.controller.on_button_click("DEL")) 
 
         # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
         self.bind("=", lambda event: self.controller.on_button_click("="))
 
-        # Bind "m" and "M" to recall memory
-        self.bind("A", lambda event: self.controller.on_button_click("ANS"))
-        self.bind("a", lambda event: self.controller.on_button_click("ANS"))
+        # Binding ctrl plus "A" and "a" to recall ANS (last result)
+        self.bind("<Control-A>", lambda event: self.controller.on_button_click("ANS"))
+        self.bind("<Control-a>", lambda event: self.controller.on_button_click("ANS"))
+    
 
         # Entry widget to display expression / results (calculator screen)
         self.expression = ctk.StringVar() 
    
-        
+        """ Using validating command to prevent random entry into the calculator so that numbers and simple operations 
+        can be entered from the keyboard and the cursor can still be used to navigate expression on the screen for seamless user experience 
+         rather than simply configuring the entry state to 'disabled' which make app too rigid such that if there is a slight mis-entered value
+          user need to delete to the part to correct the experession instead of sinmply moving the curser to that specific character. """
         # Create validation command
-        vcmd = (self.register(self.validate_input), "%P")
+        validating_entry_input = (self.register(self.validate_input), "%P")
 
         self.entry = ctk.CTkEntry(
             self, textvariable=self.expression, font=("Lucida Console",24),
             height=60, corner_radius=10, justify="right",
-            validate="key", validatecommand=vcmd  # Enable real-time validation
+            validate="key", validatecommand= validating_entry_input  # Enable real-time validation
         )
         self.entry.pack(fill="both", padx=10, pady=10)
         
@@ -185,9 +209,10 @@ class CalculatorView(ctk.CTk):
         self.context_menu.add_command(label="Cut", command=self.cut_text)
         self.context_menu.add_command(label="Copy", command=self.copy_text)
         self.context_menu.add_command(label="Paste", command=self.paste_text)
-        self.context_menu.add_separator()  # Separator line
+        self.context_menu.add_separator()  # Optional separator for clarity
         self.context_menu.add_command(label="Clear History", command=self.controller.clear_history)
-        # Binding right-click event to show the menu
+        self.context_menu.add_separator()  # Optional separator for clarity
+        self.context_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
         self.entry.bind("<Button-3>", self.show_context_menu)  # Windows/Linux
         self.entry.bind("<Control-Button-1>", self.show_context_menu) # MacOS        
 
@@ -196,7 +221,10 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Copy", command=self.copy_text)
         self.settings_menu.add_command(label="Cut", command=self.cut_text)
         self.settings_menu.add_command(label="Paste", command=self.paste_text)
+        self.settings_menu.add_separator()  # Optional separator for clarity
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
+        self.settings_menu.add_separator()  # Optional separator for clarity
+        self.settings_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
 
         #Settings button
         self.settings_button = ctk.CTkButton(self, text="",image= self.SETTINGS_ICON, width=40, height=28)
@@ -222,6 +250,11 @@ class CalculatorView(ctk.CTk):
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
 
+        # ---- NEW: Loading Animation Variables ----
+        self.loading = False
+        self.loading_dots = ["", ".", "..", "..."]
+        self.loading_index = 0
+
 
     def show_scrollable_history_window(self):
         # Check if the toplevel window already exists
@@ -233,6 +266,12 @@ class CalculatorView(ctk.CTk):
         self.history_window = ctk.CTkToplevel()
         self.history_window.title("History")
         self.history_window.geometry("200x300")
+        # Set the window as transient so it stays on top of the main window
+        self.history_window.transient(self)
+        self.history_window.grab_set()  # Prevents interaction with the main window until closed
+        self.history_window.attributes("-topmost", True)  # Forces it to be on top
+        self.history_window.lift()  # Bring to front
+        self.history_window.focus_force()  
 
         # Create a scrollable textbox
         text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
@@ -270,7 +309,7 @@ class CalculatorView(ctk.CTk):
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
             ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
             [".", "0", ",", "/","e", "pi","(", ")"],
-            ["M+", "M-"],  # Add memory buttons in scientific mode as well            
+            ["M+", "M-" ,"USD-GHS", "GHS-USD"],  # Added currency exchange buttons in scientific mode.        
         ]
         self.create_button_grid(button_layout, scientific=True)        
 
@@ -295,14 +334,11 @@ class CalculatorView(ctk.CTk):
     def update_geometry(self): #Update the window size based on the mode such that the buttons fit
         if self.mode == "Scientific":
             self.geometry("1000x600+200+40")
-        else:
-            self.geometry("480x600+600+40")
-
-    def update_history_button_position(self): #Update the history button position based on the mode so it fits
-        if self.mode == "Scientific":
             self.history_button.place(x=950, y=84)
         else:
-            self.history_button.place(x=430, y=84)        
+            self.geometry("480x600+600+40")
+            self.history_button.place(x=430, y=84)
+       
 
     # Toggle between Standard & Scientific Mode using the switch
     def toggle_mode(self):
@@ -311,25 +347,21 @@ class CalculatorView(ctk.CTk):
             self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Standard")
             self.create_scientific_buttons()
-            self.update_history_button_position()
         else:
             self.mode = "Standard"
             self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Scientific")
             self.create_standard_buttons()
-            self.update_history_button_position()
+
  
     # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
-        self.check_and_clear()
-
-    def check_and_clear(self):
-        ctext = self.expression.get()
-        if ctext == "None":
+        current_text = self.expression.get()
+        if current_text == "None":
             self.update_display("")
-    
 
+    
     # Displays the settings menu at the position of the settings button.
     def show_menu(self):
         self.settings_menu.post(
@@ -347,16 +379,16 @@ class CalculatorView(ctk.CTk):
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root) # Display menu at mouse position
 
-        # Create validation command
-    def validate_input(self, new_text):
-        #Allow only numbers, operators, scientific functions, and specific letters.
-        valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|expm1|pow|factorial|sinh|degrees|radians)?$")
-      
-        # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
-        return new_text == "" or bool(valid_chars.fullmatch(new_text))
 
+
+    #validation command that allows only digits, basic arithmetic operators, parentheses, and a decimal point.
+    def validate_input(self, new_text):
+        valid_chars = re.compile(r"^[0-9+\-*/().]*$")
+        # Allow empty input (for deletion) or validate against the pattern.
+        return new_text == "" or bool(valid_chars.fullmatch(new_text))
+        
     #Show the right-click menu at the cursor position.
-    def show_context_menu(self, event):
+    def show_context_menu_when_right_clicked(self, event):
         self.context_menu.post(event.x_root, event.y_root)
 
     # Copy text from the entry field.
@@ -375,11 +407,33 @@ class CalculatorView(ctk.CTk):
         try:
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
-            pass  # Handle empty clipboard   
+            pass  # Handle empty clipboard           
 
+    def toggle_theme(self):
+        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark" or "System")
+        # Toggle to the opposite theme (ignoring "System" for simplicity)
+        if current_mode == "Dark":
+            new_mode = "Light"
+        else:
+            new_mode = "Dark"
+        ctk.set_appearance_mode(new_mode)
+        messagebox.showinfo("THEME",f"Theme switched to {new_mode} Mode")   
 
+    # Loading Animation Methods ----
+    def start_loading_animation(self):
+        self.loading = True
+        self.loading_index = 0
+        self.animate_loading()
+
+    def animate_loading(self):
+        if self.loading:
+            self.update_display(f"Loading{self.loading_dots[self.loading_index]}")
+            self.loading_index = (self.loading_index + 1) % len(self.loading_dots)
+            self.after(500, self.animate_loading)
+
+    def stop_loading_animation(self):
+        self.loading = False   
 #-----------------------------------------------View end----------------------------------------------------
-
 
 
 
@@ -401,8 +455,11 @@ class CalculatorController:
         elif button_text == "ANS":
             self.view.update_display(self.model.recall_memory())  # Recalls stored value
         elif button_text == "=":
-            result = self.model.evaluate(current_text)
-            self.view.update_display(str(result))  # Evaluates the expression and displays results
+            try:
+                result = self.model.evaluate(current_text)
+                self.view.update_display(f"{result:,}")  # Evaluates the expression and displays results
+            except TypeError:
+                self.view.update_display("")
         elif button_text == "M+":  # Add current display value to memory stack
             value = self.view.expression.get()
             self.model.memory_plus(value)
@@ -410,10 +467,55 @@ class CalculatorController:
             self.view.update_display("")
         elif button_text == "M-":  # Retrieve the latest value from memory stack
             retrieved = self.model.memory_minus()
-            self.view.update_display(retrieved)       
+            self.view.update_display(retrieved) 
+        # --- Live currency conversion with loading animation ---
+        elif button_text == "USD-GHS":
+            try:
+                usd_value = float(current_text.replace(",", ""))
+            except ValueError:
+                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for USD.")
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_usd_to_ghs, args=(usd_value,))
+            thread.start()
+        elif button_text == "GHS-USD":
+            try:
+                ghs_value = float(current_text.replace(",", ""))
+            except ValueError:
+                messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")
+                return
+            self.view.start_loading_animation()
+            thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
+            thread.start()
+        #appending  Scientific operations with "(" to the existing text so the user will only have to close them wit ')' ---
+        elif button_text in {"sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1", 
+                             "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "pow"}:
+            self.view.update_display(current_text + button_text + "(")                            
         else:
             self.view.update_display(current_text + button_text) #appends the button text to the display
 
+    # NEW: Conversion methods run in separate threads
+    def convert_usd_to_ghs(self, usd_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            ghs_value = usd_value * live_rate
+            result_text = f"₵{ghs_value:,.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def convert_ghs_to_usd(self, ghs_value):
+        live_rate = self.model.fetch_live_usd_to_ghs_rate()
+        if live_rate:
+            usd_value = ghs_value / live_rate
+            result_text = f"${usd_value:,.2f}"
+        else:
+            result_text = ""
+        self.view.after(0, lambda: self.finish_conversion(result_text))
+
+    def finish_conversion(self, result_text):
+        self.view.stop_loading_animation()
+        self.view.update_display(result_text)
 
     # Clears the history and notifies the user when the "clear History button is clicked"
     def clear_history(self):
