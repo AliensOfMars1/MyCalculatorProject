@@ -30,7 +30,7 @@ class CalculatorModel:
 
     def fetch_live_usd_to_ghs_rate(self):
         try:
-            response = requests.get("https://api.exchangerate-api.com/v4/latest/USD") #API for live exchange rate, 
+            response = requests.get(CONSTS.CURRENCY_API_URL) #API for live exchange rate, 
             data = response.json()
             live_rate = data["rates"].get("GHS")
             if live_rate:
@@ -68,7 +68,6 @@ class CalculatorModel:
             messagebox.showinfo("ERROR", "Function Error: Invalid operation!") 
         except Exception as e:
             return f"Error: {str(e)}"
-
 
     def save_to_history(self, expression, result):
         entry = f"{expression} = {result}\n"
@@ -138,8 +137,6 @@ class CalculatorModel:
 #-----------------------------------------------Model end-----------------------------------------------------
 
 
-
-
 #-----------------------------------------------View start----------------------------------------------------
 # VIEW: Handles UI
 
@@ -165,36 +162,46 @@ class CalculatorView(ctk.CTk):
             dark_image=Image.open(CONSTS.SETTINGS_ICON),
             size=(20, 20)
         )
+
      #.....................................key bindings...............................................
         #bind escape key to clear the display 
         self.bind("<Escape>", lambda event: self.controller.on_button_click("CE"))
 
-        # Bind "h" or "H" to show history 
-        self.bind( "H", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
-        self.bind( "h", lambda event: messagebox.showinfo("History", self.controller.model.get_history()))
+        # Binding ctrl plus "h" or "H" to show history 
+        self.bind( "<Control-H>", lambda event: self.show_scrollable_history_window())
+        self.bind( "<Control-h>", lambda event: self.show_scrollable_history_window())
+
+        #binding ctrl plus T or t to switch between light and dark mode
+        self.bind( "<Control-T>", lambda event: self.toggle_theme())
+        self.bind( "<Control-t>", lambda event: self.toggle_theme())
+
+        #Binding backspace to delete the last entered character 
+        self.bind("<BackSpace>", lambda event: self.controller.on_button_click("DEL")) 
 
         # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
         self.bind("=", lambda event: self.controller.on_button_click("="))
 
-        # Bind "m" and "M" to recall memory
-        self.bind("A", lambda event: self.controller.on_button_click("ANS"))
-        self.bind("a", lambda event: self.controller.on_button_click("ANS"))
+        # Binding ctrl plus "A" and "a" to recall ANS (last result)
+        self.bind("<Control-A>", lambda event: self.controller.on_button_click("ANS"))
+        self.bind("<Control-a>", lambda event: self.controller.on_button_click("ANS"))
+    
 
         # Entry widget to display expression / results (calculator screen)
         self.expression = ctk.StringVar() 
    
-        
+        """ Using validating command to prevent random entry into the calculator so that numbers and simple operations 
+        can be entered from the keyboard and the cursor can still be used to navigate expression on the screen for seamless user experience 
+         rather than simply configuring the entry state to 'disabled' which make app too rigid such that if there is a slight mis-entered value
+          user need to delete to the part to correct the experession instead of sinmply moving the curser to that specific character. """
         # Create validation command
-        vcmd = (self.register(self.validate_input), "%P")
+        validating_entry_input = (self.register(self.validate_input), "%P")
 
         self.entry = ctk.CTkEntry(
             self, textvariable=self.expression, font=("Lucida Console",24),
             height=60, corner_radius=10, justify="right",
-            validate="key", validatecommand=vcmd   # Enable real-time validation
+            validate="key", validatecommand= validating_entry_input  # Enable real-time validation
         )
-        # self.entry.configure(state="disabled")
-        # self.entry.configure(state="readonly")
         self.entry.pack(fill="both", padx=10, pady=10)
         
         # A right-click context menu
@@ -327,14 +334,11 @@ class CalculatorView(ctk.CTk):
     def update_geometry(self): #Update the window size based on the mode such that the buttons fit
         if self.mode == "Scientific":
             self.geometry("1000x600+200+40")
-        else:
-            self.geometry("480x600+600+40")
-
-    def update_history_button_position(self): #Update the history button position based on the mode so it fits
-        if self.mode == "Scientific":
             self.history_button.place(x=950, y=84)
         else:
-            self.history_button.place(x=430, y=84)        
+            self.geometry("480x600+600+40")
+            self.history_button.place(x=430, y=84)
+       
 
     # Toggle between Standard & Scientific Mode using the switch
     def toggle_mode(self):
@@ -343,19 +347,18 @@ class CalculatorView(ctk.CTk):
             self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Standard")
             self.create_scientific_buttons()
-            self.update_history_button_position()
         else:
             self.mode = "Standard"
             self.update_geometry()  # Update UI size for scientific mode
             self.toggle_switch.configure(text="Switch to Scientific")
             self.create_standard_buttons()
-            self.update_history_button_position()
+
  
     # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
-        ctext = self.expression.get()
-        if ctext == "None":
+        current_text = self.expression.get()
+        if current_text == "None":
             self.update_display("")
 
     
@@ -376,48 +379,35 @@ class CalculatorView(ctk.CTk):
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root) # Display menu at mouse position
 
-        # Create validation command
-    def validate_input(self, new_text):
-        #Allow only numbers, operators, scientific functions, and specific letters.
-        valid_chars =  re.compile(r"^[0-9+\-*/().eπ]*$|^(sin|cos|tan|log|sqrt|exp|pow|log2|log10|cosh|tanh|expm1|pow|factorial|sinh|degrees|radians)?$")
-      
-        # If new_text is empty (to allow backspacing) or matches the pattern, return True (allow input)
-        return new_text == "" or bool(valid_chars.fullmatch(new_text))
 
+
+    #validation command that allows only digits, basic arithmetic operators, parentheses, and a decimal point.
+    def validate_input(self, new_text):
+        valid_chars = re.compile(r"^[0-9+\-*/().]*$")
+        # Allow empty input (for deletion) or validate against the pattern.
+        return new_text == "" or bool(valid_chars.fullmatch(new_text))
+        
     #Show the right-click menu at the cursor position.
-    def show_context_menu(self, event):
+    def show_context_menu_when_right_clicked(self, event):
         self.context_menu.post(event.x_root, event.y_root)
 
     # Copy text from the entry field.
-
     def copy_text(self):
         self.clipboard_clear()
         self.clipboard_append(self.entry.get())
-        self.update()         
+        self.update()
 
+    # Cuts text from the entry field.
     def cut_text(self):
-        try:
-            # Enable editing temporarily
-            self.entry.configure(state="normal")
-            self.copy_text()  # Copy the current content
-            self.entry.delete(0, "end")  # Delete all text
-        finally:
-            # Revert back to readonly to maintain non-editable display
-            self.entry.configure(state="readonly")    
-
+        self.copy_text()
+        self.entry.delete(0, "end")
 
     # Pastes text from the clipboard into the entry field.
     def paste_text(self):
         try:
-            # Enable editing temporarily
-            self.entry.configure(state="normal")            
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
-            pass  # Handle empty clipboard
-        finally:
-            # Revert back to readonly to maintain non-editable display
-            self.entry.configure(state="readonly")
-           
+            pass  # Handle empty clipboard           
 
     def toggle_theme(self):
         current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark" or "System")
@@ -444,7 +434,6 @@ class CalculatorView(ctk.CTk):
     def stop_loading_animation(self):
         self.loading = False   
 #-----------------------------------------------View end----------------------------------------------------
-
 
 
 
@@ -482,7 +471,7 @@ class CalculatorController:
         # --- Live currency conversion with loading animation ---
         elif button_text == "USD-GHS":
             try:
-                usd_value = float(current_text)
+                usd_value = float(current_text.replace(",", ""))
             except ValueError:
                 messagebox.showerror("Conversion Error", "Please enter a valid numeric value for USD.")
                 return
@@ -491,7 +480,7 @@ class CalculatorController:
             thread.start()
         elif button_text == "GHS-USD":
             try:
-                ghs_value = float(current_text)
+                ghs_value = float(current_text.replace(",", ""))
             except ValueError:
                 messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")
                 return
