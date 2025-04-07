@@ -26,7 +26,7 @@ class CalculatorModel:
         self.history_file = "history.txt"  # File for history
         self.history = self.load_history()  # Load history at startup
         self.memory_file = "memory.json" #file for memory storage
-        # self.memory_stack= self.load_memory() #load memory at startup
+        self.memory_stack= self.load_stack() #load memory at startup
 
     def fetch_live_usd_to_ghs_rate(self):
         try:
@@ -97,8 +97,8 @@ class CalculatorModel:
                 try:
                     return json.load(file)  # Load JSON data
                 except json.JSONDecodeError:
-                    return []  # If the file is empty or corrupt, return an empty list
-        return []  # If no file exists, initialize an empty list
+                    return []  # If the file exists but is empty or contains invalid JSON, return an empty list 
+        return []  # If no file exist at all, initialize an empty list
     
     # Function to save the stack to the JSON file
     def save_stack(self, stack):
@@ -152,7 +152,6 @@ class CalculatorView(ctk.CTk):
         # Load the history icon image.
         self.HISTORY_ICON = ctk.CTkImage( 
             light_image = Image.open(CONSTS.HISTORY_ICON),
-            # light_image=Image.open("historyicon.png"),
             dark_image=Image.open(CONSTS.HISTORY_ICON),
             size=(20, 20)
         )
@@ -250,7 +249,7 @@ class CalculatorView(ctk.CTk):
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
 
-        # ---- NEW: Loading Animation Variables ----
+        #  Loading Animation Variables ----
         self.loading = False
         self.loading_dots = ["", ".", "..", "..."]
         self.loading_index = 0
@@ -268,7 +267,6 @@ class CalculatorView(ctk.CTk):
         self.history_window.geometry("200x300")
         # Set the window as transient so it stays on top of the main window
         self.history_window.transient(self)
-        self.history_window.grab_set()  # Prevents interaction with the main window until closed
         self.history_window.attributes("-topmost", True)  # Forces it to be on top
         self.history_window.lift()  # Bring to front
         self.history_window.focus_force()  
@@ -387,10 +385,6 @@ class CalculatorView(ctk.CTk):
         # Allow empty input (for deletion) or validate against the pattern.
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
         
-    #Show the right-click menu at the cursor position.
-    def show_context_menu_when_right_clicked(self, event):
-        self.context_menu.post(event.x_root, event.y_root)
-
     # Copy text from the entry field.
     def copy_text(self):
         self.clipboard_clear()
@@ -463,7 +457,7 @@ class CalculatorController:
         elif button_text == "M+":  # Add current display value to memory stack
             value = self.view.expression.get()
             self.model.memory_plus(value)
-            # Optionally, clear display or notify the user
+            #  clear display after adding value
             self.view.update_display("")
         elif button_text == "M-":  # Retrieve the latest value from memory stack
             retrieved = self.model.memory_minus()
