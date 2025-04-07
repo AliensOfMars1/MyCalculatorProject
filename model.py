@@ -28,8 +28,8 @@ class CalculatorModel:
         try:
             # Remove commas to prevent eval() from misinterpreting the formatted result
             expression = expression.replace(",", "")
-            if not expression.strip():
-                return 0
+            if not expression.strip():  # If the expression is empty or only spaces
+                return 0  # Return 0 instead of evaluating
             result = eval(expression, {"__builtins__": None}, {
                 "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log,
                 "sqrt": math.sqrt, "pow": math.pow, "pi": math.pi, "e": math.e,

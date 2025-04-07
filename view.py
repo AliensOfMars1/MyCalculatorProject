@@ -26,20 +26,37 @@ class CalculatorView(ctk.CTk):
             size=(20, 20)
         )
 
-        # Key bindings
+        # --------------------------------------------Key bindings
+
+        #bind escape key to clear the display 
         self.bind("<Escape>", lambda event: self.controller.on_button_click("CE"))
+
+        # Binding ctrl plus "h" or "H" to show history
         self.bind("<Control-H>", lambda event: self.show_scrollable_history_window())
         self.bind("<Control-h>", lambda event: self.show_scrollable_history_window())
+
+        #binding ctrl plus T or t to switch between light and dark mode
         self.bind("<Control-T>", lambda event: self.toggle_theme())
         self.bind("<Control-t>", lambda event: self.toggle_theme())
+
+        #Binding backspace to delete the last entered character 
         self.bind("<BackSpace>", lambda event: self.controller.on_button_click("DEL"))
+
+        # Bind "=" and "Return" key to execute calculations
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
         self.bind("=", lambda event: self.controller.on_button_click("="))
+
+        # Binding ctrl plus "A" and "a" to recall ANS (last result)
         self.bind("<Control-A>", lambda event: self.controller.on_button_click("ANS"))
         self.bind("<Control-a>", lambda event: self.controller.on_button_click("ANS"))
 
         # Entry widget for expression / results
         self.expression = ctk.StringVar()
+        """ Using validating command to prevent random entry into the calculator so only that numbers and simple operations 
+        can be entered from the keyboard and the cursor can still be used to navigate expression on the screen for seamless user experience 
+         rather than simply configuring the entry state to 'disabled' which make app too rigid such that if there is a slight mis-entered value
+          user need to delete to the part to correct the experession instead of sinmply moving the curser to that specific character. """
+        # Create validation command        
         validating_entry_input = (self.register(self.validate_input), "%P")
         self.entry = ctk.CTkEntry(
             self, textvariable=self.expression, font=("Lucida Console", 24),
@@ -48,7 +65,7 @@ class CalculatorView(ctk.CTk):
         )
         self.entry.pack(fill="both", padx=10, pady=10)
 
-        # Context menu
+        # A right-click context menu
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.cut_text)
         self.context_menu.add_command(label="Copy", command=self.copy_text)
@@ -60,7 +77,7 @@ class CalculatorView(ctk.CTk):
         self.entry.bind("<Button-3>", self.show_context_menu)
         self.entry.bind("<Control-Button-1>", self.show_context_menu)
 
-        # Settings menu
+        # Settings drop down menu
         self.settings_menu = tk.Menu(self, tearoff=0)
         self.settings_menu.add_command(label="Copy", command=self.copy_text)
         self.settings_menu.add_command(label="Cut", command=self.cut_text)
@@ -91,7 +108,7 @@ class CalculatorView(ctk.CTk):
         )
         self.toggle_switch.pack(pady=5)
 
-        # Frame for buttons
+        # Frame to hold calculator buttons
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(expand=True, fill="both")
         self.create_standard_buttons()
@@ -102,29 +119,31 @@ class CalculatorView(ctk.CTk):
         self.loading_index = 0
 
     def show_scrollable_history_window(self):
+        # Check if the toplevel window already exists
         if hasattr(self, "history_window") and self.history_window.winfo_exists():
-            self.history_window.lift()
-            return
-
+            self.history_window.lift() # Bring it to the front
+            return  # Exit the function if the window is already open
         self.history_window = ctk.CTkToplevel()
         self.history_window.title("History")
         self.history_window.geometry("200x300")
+        # Set the window as transient so it stays on top of the main window
         self.history_window.transient(self)
-        self.history_window.grab_set()
-        self.history_window.attributes("-topmost", True)
-        self.history_window.lift()
+        self.history_window.attributes("-topmost", True)  # Forces it to be on top
+        self.history_window.lift() # Bring to front
         self.history_window.focus_force()
-
+        # Create a scrollable textbox
         text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
         text_widget.pack(pady=10, padx=10, fill="both", expand=True)
+        # Read the text file and insert its content
         try:
             with open("history.txt", "r", encoding="utf-8") as file:
                 text_content = file.read()
                 text_widget.insert("1.0", text_content)
         except FileNotFoundError:
             text_widget.insert("1.0", "File not found!")
-        text_widget.configure(state="disabled")
+        text_widget.configure(state="disabled") # Make the text read-only
 
+# Function to create standard/basic buttons and memory [M+, M-] buttons.
     def create_standard_buttons(self):
         self.clear_buttons()
         button_layout = [
@@ -137,6 +156,7 @@ class CalculatorView(ctk.CTk):
         ]
         self.create_button_grid(button_layout)
 
+# Function to create scientific buttons, currency exchange and memory [M+, M-] buttons.
     def create_scientific_buttons(self):
         self.clear_buttons()
         button_layout = [
@@ -149,6 +169,7 @@ class CalculatorView(ctk.CTk):
         ]
         self.create_button_grid(button_layout, scientific=True)
 
+    # Creates button grid
     def create_button_grid(self, button_layout, scientific=False):
         for row in button_layout:
             row_frame = ctk.CTkFrame(self.button_frame)
@@ -165,10 +186,12 @@ class CalculatorView(ctk.CTk):
                 )
                 btn.pack(side="left", expand=True, fill="both", padx=4, pady=4)
 
+    # Removes all existing buttons before updating mode.
     def clear_buttons(self):
         for widget in self.button_frame.winfo_children():
             widget.destroy()
 
+ #Update the window size based on the mode such that the buttons fit
     def update_geometry(self):
         if self.mode == "Scientific":
             self.geometry("1000x600+200+40")
@@ -177,6 +200,7 @@ class CalculatorView(ctk.CTk):
             self.geometry("480x600+600+40")
             self.history_button.place(x=430, y=84)
 
+    # Toggle between Standard & Scientific Mode using the switch
     def toggle_mode(self):
         if self.switch_var.get() == "Scientific":
             self.mode = "Scientific"
@@ -189,18 +213,22 @@ class CalculatorView(ctk.CTk):
             self.toggle_switch.configure(text="Switch to Scientific")
             self.create_standard_buttons()
 
+    # Updates the calculator display.
     def update_display(self, text):
         self.expression.set(text)
         current_text = self.expression.get()
+        # Some exception after being handled return "None" on the screen; this check and remove the None
         if current_text == "None":
             self.update_display("")
 
+    # Displays the settings menu at the position of the settings button.
     def show_menu(self):
         self.settings_menu.post(
             self.settings_button.winfo_rootx(),
             self.settings_button.winfo_rooty() + self.settings_button.winfo_height()
         )
 
+        # right-click menu drop down
     def show_context_menu(self, event):
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(label="Cut", command=self.cut_text)
@@ -210,6 +238,7 @@ class CalculatorView(ctk.CTk):
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root)
 
+    #validation command that allows only digits, basic arithmetic operators, parentheses, and a decimal point.
     def validate_input(self, new_text):
         valid_chars = re.compile(r"^[0-9+\-*/().]*$")
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
@@ -230,7 +259,7 @@ class CalculatorView(ctk.CTk):
             pass
 
     def toggle_theme(self):
-        current_mode = ctk.get_appearance_mode()
+        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
         new_mode = "Light" if current_mode == "Dark" else "Dark"
         ctk.set_appearance_mode(new_mode)
         messagebox.showinfo("THEME", f"Theme switched to {new_mode} Mode")

@@ -8,27 +8,29 @@ class CalculatorController:
         self.model = CalculatorModel()
         self.view = CalculatorView(self)
 
+    # Handles all the button click events.
     def on_button_click(self, button_text):
         current_text = self.view.expression.get()
         if button_text == "CE":
-            self.view.update_display("")
+            self.view.update_display("") # Clears the display
         elif button_text == "DEL":
-            self.view.update_display(self.model.delete_last(current_text))
+            self.view.update_display(self.model.delete_last(current_text)) # Deletes the last character
         elif button_text == "ANS":
-            self.view.update_display(self.model.recall_memory())
+            self.view.update_display(self.model.recall_memory()) # Recalls last result value
         elif button_text == "=":
             try:
-                result = self.model.evaluate(current_text)
-                self.view.update_display(f"{result:,}")
+                result = self.model.evaluate(current_text) # Evaluates the expression 
+                self.view.update_display(f"{result:,}") # and displays results.
             except TypeError:
-                self.view.update_display("")
-        elif button_text == "M+":
-            value = self.view.expression.get()
-            self.model.memory_plus(value)
-            self.view.update_display("")
+                self.view.update_display("") #returns an empty screen whiles the model handles the Error returning a user-friendly message
+        elif button_text == "M+":   
+            value = self.view.expression.get() 
+            self.model.memory_plus(value) 
+            self.view.update_display("") #  clear display after adding value
         elif button_text == "M-":
             retrieved = self.model.memory_minus()
             self.view.update_display(retrieved)
+        # --- Live currency conversion with loading animation ---            
         elif button_text == "USD-GHS":
             try:
                 usd_value = float(current_text.replace(",", ""))
@@ -47,12 +49,14 @@ class CalculatorController:
             self.view.start_loading_animation()
             thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
             thread.start()
+             #appending  Scientific operations with "(" to the existing text so the user will only have to close them with ')'
         elif button_text in {"sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1",
                              "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "pow"}:
             self.view.update_display(current_text + button_text + "(")
         else:
             self.view.update_display(current_text + button_text)
 
+    #Conversion methods
     def convert_usd_to_ghs(self, usd_value):
         live_rate = self.model.fetch_live_usd_to_ghs_rate()
         if live_rate:
@@ -75,7 +79,9 @@ class CalculatorController:
         self.view.stop_loading_animation()
         self.view.update_display(result_text)
 
+    #Clears the history notifies the user when the "clear History button is clicked"
     def clear_history(self):
+        # Ask the user to confirm deletion
         confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to clear the history?")
         if confirm:
             self.model.clear_history()
