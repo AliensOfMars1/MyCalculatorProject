@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, font
 from PIL import Image, ImageTk
 import customtkinter as ctk
-from const import CONSTS  # Assumes CONSTS is defined in const.py
+from const import CONSTS  # CONSTS is defined in const.py
 
 class CalculatorView(ctk.CTk):
     def __init__(self, controller):
@@ -163,7 +163,7 @@ class CalculatorView(ctk.CTk):
             ["CE", "ANS", "DEL", "=","sin", "cos", "tan", "exp"],
             ["1", "2", "3" ,"+","sinh", "cosh", "tanh", "expm1"],
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
-            ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
+            ["7", "8", "9","*","radians","abs", "sqrt", "degrees"],
             [".", "0", ",", "/","e", "pi","(", ")"],
             ["M+", "M-" ,"USD-GHS", "GHS-USD"],
         ]
@@ -277,3 +277,42 @@ class CalculatorView(ctk.CTk):
 
     def stop_loading_animation(self):
         self.loading = False
+
+
+    def format_expression(self, expression):
+        """
+        Returns the expression string with numbers formatted with commas.
+        Example: "1234+56789" becomes "1,234+56,789"
+        """
+        # Remove any existing commas returning the expr clean and ready for spliting and formatting
+        expression = expression.replace(",", "") 
+
+        # helps to format each number match
+        def format_match(match):
+            num_str = match.group(0)
+            if '.' in num_str:
+                integer_part, decimal_part = num_str.split('.', 1) #splits expr into integer and decimal for easy formatting with commas
+                try:
+                    formatted_int = f"{int(integer_part):,}" if integer_part else "0"
+                    return f"{formatted_int}.{decimal_part}" # and re-attach it back together.
+                except ValueError:
+                    return num_str #if formatting fails fallback to original expression 
+            else:
+                try:
+                    return f"{int(num_str):,}"
+                except ValueError:
+                    return num_str #if formatting fails fallback to original expression
+
+        formatted_expression = re.sub(r'-?\d+(?:\.\d+)?', format_match, expression) 
+        return formatted_expression
+    
+    
+
+    def on_key_release(self, event):
+        current_expression = self.expression.get()
+        formatted_expression = self.format_expression(current_expression)
+        # Save current cursor position 
+        cursor_position = self.entry.index(tk.INSERT)
+        self.update_display(formatted_expression)
+        # Restore cursor position (adjust if necessary)
+        self.entry.icursor(cursor_position)

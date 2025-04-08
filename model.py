@@ -26,8 +26,8 @@ class CalculatorModel:
 
     def evaluate(self, expression):
         try:
-            # Remove commas to prevent eval() from misinterpreting the formatted result
-            expression = expression.replace(",", "")
+            # Remove commas and currency symbols to prevent eval() from misinterpreting the formatted result
+            expression = expression.replace(",", "").replace("₵", "").replace("$", "")
             if not expression.strip():  # If the expression is empty or only spaces
                 return 0  # Return 0 instead of evaluating
             result = eval(expression, {"__builtins__": None}, {
@@ -50,6 +50,8 @@ class CalculatorModel:
             messagebox.showinfo("ERROR", "Type Error: Incorrect number format!")
         except AttributeError:
             messagebox.showinfo("ERROR", "Function Error: Invalid operation!")
+        except OverflowError:
+            messagebox.showinfo("ERROR", "Math Error: The result is too large to compute.")    
         except Exception as e:
             return f"Error: {str(e)}"
 
