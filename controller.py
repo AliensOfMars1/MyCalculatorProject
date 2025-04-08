@@ -33,7 +33,7 @@ class CalculatorController:
         # --- Live currency conversion with loading animation ---            
         elif button_text == "USD-GHS":
             try:
-                usd_value = float(current_text.replace(",", ""))
+                usd_value = float(current_text.replace(",", "").replace("$", ""))
             except ValueError:
                 messagebox.showerror("Conversion Error", "Please enter a valid numeric value for USD.")
                 return
@@ -42,7 +42,7 @@ class CalculatorController:
             thread.start()
         elif button_text == "GHS-USD":
             try:
-                ghs_value = float(current_text.replace(",", ""))
+                ghs_value = float(current_text.replace(",", "").replace("₵", ""))
             except ValueError:
                 messagebox.showerror("Conversion Error", "Please enter a valid numeric value for GHS.")
                 return
