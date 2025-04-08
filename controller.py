@@ -10,15 +10,23 @@ class CalculatorController:
 
     # Handles all the button click events.
     def on_button_click(self, button_text):
+
         current_text = self.view.expression.get()
+
+        SCIENTIFIC_FUNCS = {
+        "sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1",
+        "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "abs"}
+
         if button_text == "CE":
             self.view.update_display("") # Clears the display
+
         elif button_text == "DEL":
             # Work with a raw (unformatted) version of the expression
             raw_text = current_text.replace(",", "")
             new_text = self.model.delete_last(raw_text)
             formatted_expr = self.view.format_expression(new_text)
             self.view.update_display(formatted_expr) # Deletes the last character
+            
         elif button_text == "ANS":
             ans_text = self.model.recall_memory() # Recalls last result value
             formatted__expression = self.view.format_expression(ans_text)
@@ -38,7 +46,8 @@ class CalculatorController:
         elif button_text == "M+":   
             value = self.view.expression.get() 
             self.model.memory_plus(value) 
-            self.view.update_display("") #  clear display after adding value
+            self.view.update_display("") #  clear display after adding value for good flow 
+            messagebox.showerror("Memory", f'{value} added to memory!')
         elif button_text == "M-":
             retrieved = self.model.memory_minus()
             formatted_expression = self.view.format_expression(retrieved)
@@ -62,9 +71,8 @@ class CalculatorController:
             self.view.start_loading_animation()
             thread = threading.Thread(target=self.convert_ghs_to_usd, args=(ghs_value,))
             thread.start()
-             #appending  Scientific operations with "(" to the existing text so the user will only have to close them with ')'
-        elif button_text in {"sin", "cos", "tan", "exp", "sinh", "cosh", "tanh", "expm1",
-                             "log", "log2", "log10", "factorial", "radians", "degrees", "sqrt", "pow"}:
+        #appending  Scientific operations with "(" to the existing text so the user will only have to close them with ')'
+        elif button_text in SCIENTIFIC_FUNCS:
             new_text = current_text + button_text + "("
             formatted_expr = self.view.format_expression(new_text)
             self.view.update_display(formatted_expr)
@@ -103,6 +111,7 @@ class CalculatorController:
         if confirm:
             self.model.clear_history()
             messagebox.showinfo("History", "Calculation history cleared successfully!")
+
 
     def run(self):
         self.view.mainloop()

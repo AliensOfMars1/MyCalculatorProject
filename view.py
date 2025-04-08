@@ -163,7 +163,7 @@ class CalculatorView(ctk.CTk):
             ["CE", "ANS", "DEL", "=","sin", "cos", "tan", "exp"],
             ["1", "2", "3" ,"+","sinh", "cosh", "tanh", "expm1"],
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
-            ["7", "8", "9","*","radians","degrees", "sqrt", "pow"],
+            ["7", "8", "9","*","radians","abs", "sqrt", "degrees"],
             [".", "0", ",", "/","e", "pi","(", ")"],
             ["M+", "M-" ,"USD-GHS", "GHS-USD"],
         ]
@@ -303,8 +303,10 @@ class CalculatorView(ctk.CTk):
                 except ValueError:
                     return num_str #if formatting fails fallback to original expression
 
-        formatted_expression = re.sub(r'-?\d+(\.\d+)?', format_match, expression)
+        formatted_expression = re.sub(r'-?\d+(?:\.\d+)?', format_match, expression) 
         return formatted_expression
+    
+    
 
     def on_key_release(self, event):
         current_expression = self.expression.get()
