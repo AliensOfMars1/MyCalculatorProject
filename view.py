@@ -134,13 +134,19 @@ class CalculatorView(ctk.CTk):
         # Create a scrollable textbox
         text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
         text_widget.pack(pady=10, padx=10, fill="both", expand=True)
-        # Read the text file and insert its content
-        try:
-            with open("history.txt", "r", encoding="utf-8") as file:
-                text_content = file.read()
-                text_widget.insert("1.0", text_content)
-        except FileNotFoundError:
-            text_widget.insert("1.0", "File not found!")
+
+        # # Read the text file and insert its content
+        # try:
+        #     with open("history.txt", "r", encoding="utf-8") as file:
+        #         text_content = file.read()
+        #         text_widget.insert("1.0", text_content)
+        # except FileNotFoundError:
+        #     text_widget.insert("1.0", "File not found!")
+
+        # Get the history from the model and insert it
+        history_text = self.controller.model.get_history()
+        text_widget.insert("1.0", history_text if history_text else "No history available.")
+
         text_widget.configure(state="disabled") # Make the text read-only
 
 # Function to create standard/basic buttons and memory [M+, M-] buttons.
