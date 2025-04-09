@@ -8,7 +8,7 @@ from const import CONSTS  # Assumes CONSTS is defined in const.py
 class CalculatorModel:
     def __init__(self):
         self.memory = ""  # initialize the memory storage
-        self.history_file = "history.txt"  # File for history
+        self.history_file = "history.json"  # File for history
         self.history = self.load_history()  # Load history at startup
         self.memory_file = "memory.json"  # File for memory storage
 
@@ -55,26 +55,51 @@ class CalculatorModel:
         except Exception as e:
             return f"Error: {str(e)}"
 
+
     def save_to_history(self, expression, result):
-        entry = f"{expression} = {result}\n"
-        with open(self.history_file, "a") as file:
-            file.write(f"{entry}\n")
-        if self.history is None:
-            self.history = []
-        self.history.append(entry.strip())
+        entry = f"{expression} = {result}"
+        # Append the new entry to the history list
+        self.history.append(entry)
+        # Save the updated history list to the JSON file
+        try:
+            with open(self.history_file, "w", encoding="utf-8") as file:
+                json.dump(self.history, file, indent=4)
+        except Exception as e:
+            messagebox.showerror("History Save Error", f"Failed to save history:\n{e}")
 
     def load_history(self):
+         # Check if the file exists before attempting to open it
         if os.path.exists(self.history_file):
-            with open(self.history_file, "r") as file:
-                return file.readlines()
-        return []
+            try:
+                with open(self.history_file, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                    # Ensure the data is a list before returning
+                    if isinstance(data, list):
+                        return data
+                    return []
+            except json.JSONDecodeError:
+                return []  # Handle the case where the file exist but is not valid JSON
+        return []  # while this Handle the case where the file does not exist at all 
 
     def get_history(self):
-        return "\n".join(self.history[-10:]) if self.history else "No history available."
+        # Returns the most recent 100 entries with the latest at the top (or all entries if fewer than 100)
+        if self.history:
+            # Retrieve the most recent 100 entries, reversing to show the latest first
+            recent_history = self.history[-100:][::-1]
+            # Join entries with two newline characters to add a blank line between them
+            return "\n\n".join(recent_history)
+        return "No history available."
 
     def clear_history(self):
-        open(self.history_file, "w").close()
-        self.history = []
+        # Ask the user to confirm deletion
+        confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to clear the history?")
+        if confirm:
+            self.model.clear_history()
+            # Close the history window if it's open
+            if hasattr(self.view, "history_window") and self.view.history_window.winfo_exists():
+                self.view.history_window.destroy()
+                del self.view.history_window  # Optionally remove the attribute
+            messagebox.showinfo("History", "Calculation history cleared successfully!")
 
     def load_stack(self):
         if os.path.exists(self.memory_file):
