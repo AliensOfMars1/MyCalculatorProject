@@ -89,17 +89,13 @@ class CalculatorModel:
             # Join entries with two newline characters to add a blank line between them
             return "\n\n".join(recent_history)
         return "No history available."
-
+    
     def clear_history(self):
-        # Ask the user to confirm deletion
-        confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to clear the history?")
-        if confirm:
-            self.model.clear_history()
-            # Close the history window if it's open
-            if hasattr(self.view, "history_window") and self.view.history_window.winfo_exists():
-                self.view.history_window.destroy()
-                del self.view.history_window  # Optionally remove the attribute
-            messagebox.showinfo("History", "Calculation history cleared successfully!")
+        # Reset the in-memory history list and write an empty list to file.
+        self.history = []
+        with open(self.history_file, "w") as file:
+            json.dump(self.history, file, indent=4)
+
 
     def load_stack(self):
         if os.path.exists(self.memory_file):
