@@ -110,8 +110,11 @@ class CalculatorController:
         confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to clear the history?")
         if confirm:
             self.model.clear_history()
+            # Close the history window if it's open
+            if hasattr(self.view, "history_window") and self.view.history_window.winfo_exists():
+                self.view.history_window.destroy()
+                del self.view.history_window  # Optionally remove the attribute
             messagebox.showinfo("History", "Calculation history cleared successfully!")
-
 
     def run(self):
         self.view.mainloop()
