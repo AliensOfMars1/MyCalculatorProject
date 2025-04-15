@@ -3,13 +3,13 @@ import tkinter as tk
 from tkinter import messagebox, font
 from PIL import Image, ImageTk
 import customtkinter as ctk
-from const import CONSTS  # CONSTS is defined in const.py
+from consts import CONSTS  # CONSTS is defined in const.py
 
 class CalculatorView(ctk.CTk):
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
-        self.title("Calculator")
+        self.title(CONSTS.APP_TITLE)
         self.geometry("480x600+600+40")
         self.iconbitmap(CONSTS.CALCULATOR_ICON)
         self.resizable(width=False, height=False)
@@ -272,15 +272,6 @@ class CalculatorView(ctk.CTk):
             self.entry.insert("end", self.clipboard_get())
         except tk.TclError:
             pass
-
-    # def toggle_theme(self):
-    #     current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
-    #     new_mode = "Light" if current_mode == "Dark" else "Dark"
-    #     ctk.set_appearance_mode(new_mode)
-    #     # Update the settings menu to reflect the new mode 
-    #     self.settings_menu.configure(5, label=f"Switch To {new_mode}")
-
-    #     messagebox.showinfo("THEME", f"Theme switched to {current_mode} Mode")
 
     def toggle_theme(self):
         # Get the current appearance mode using ctk
