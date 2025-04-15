@@ -1,3 +1,6 @@
+ADVANCED CUSTOMTKINTER CALCULATOR 
+
+
 This Python Calculator is a modern, user-friendly desktop calculator application built with Python, featuring a clean GUI powered by CustomTkinter. This application offers both a standard and scientific mode, with advanced mathematical functions and live features like live currency converter.
 
 Key Features
