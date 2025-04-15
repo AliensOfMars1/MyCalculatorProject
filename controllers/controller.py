@@ -1,8 +1,8 @@
 import threading
 import re
 from tkinter import messagebox
-from model import CalculatorModel
-from view import CalculatorView
+from models.model import CalculatorModel
+from views.view import CalculatorView
 
 class CalculatorController:
     def __init__(self):

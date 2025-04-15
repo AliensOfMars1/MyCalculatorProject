@@ -1,4 +1,4 @@
-from controller import CalculatorController
+from controllers.controller import CalculatorController
 
 if __name__ == "__main__":
     app = CalculatorController()

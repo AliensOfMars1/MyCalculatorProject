@@ -3,14 +3,14 @@ import os
 import json
 import requests
 from tkinter import messagebox
-from const import CONSTS  # Assumes CONSTS is defined in const.py
+from consts import CONSTS  # Assumes CONSTS is defined in const.py
 
 class CalculatorModel:
     def __init__(self):
         self.memory = ""  # initialize the memory storage
-        self.history_file = "history.json"  # File for history
+        self.history_file =  CONSTS.HISTORY_FILE  # File for history
         self.history = self.load_history()  # Load history at startup
-        self.memory_file = "memory.json"  # File for memory storage
+        self.memory_file =  CONSTS.MEMORY_FILE  # File for memory storage
 
     def fetch_live_usd_to_ghs_rate(self):
         try:
