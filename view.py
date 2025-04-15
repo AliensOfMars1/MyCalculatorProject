@@ -46,9 +46,23 @@ class CalculatorView(ctk.CTk):
         self.bind("<Return>", lambda event: self.controller.on_button_click("="))
         self.bind("=", lambda event: self.controller.on_button_click("="))
 
-        # Binding ctrl plus "A" and "a" to recall ANS (last result)
+        # Binding ctrl plus "A" and "a" to copy text
         self.bind("<Control-A>", lambda event: self.controller.on_button_click("ANS"))
         self.bind("<Control-a>", lambda event: self.controller.on_button_click("ANS"))
+
+        # Binding ctrl plus "C" and "c" to recall ANS (last result)
+        self.bind("<Control-c>", lambda event: self.copy_text())
+        self.bind("<Control-C>", lambda event: self.copy_text())
+
+        # Binding ctrl plus "v" and "V" to paste
+        self.bind("<Control-v>", lambda event: self.paste_text())
+        self.bind("<Control-V>", lambda event: self.paste_text())
+
+        # Binding ctrl plus "x" and "X" to paste
+        self.bind("<Control-x>", lambda event: self.cut_text())
+        self.bind("<Control-X>", lambda event: self.cut_text())
+
+
 
         # Entry widget for expression / results
         self.expression = ctk.StringVar()
@@ -65,6 +79,9 @@ class CalculatorView(ctk.CTk):
         )
         self.entry.pack(fill="both", padx=10, pady=10)
 
+
+        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
+        new_mode = "Light" if current_mode == "Dark" else "Dark"
         # A right-click context menu
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.cut_text)
@@ -73,7 +90,7 @@ class CalculatorView(ctk.CTk):
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Clear History", command=self.controller.clear_history)
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
+        self.context_menu.add_command(label=f'"Switch To {new_mode}"', command=self.toggle_theme)
         self.entry.bind("<Button-3>", self.show_context_menu)
         self.entry.bind("<Control-Button-1>", self.show_context_menu)
 
@@ -85,7 +102,7 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_separator()
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
         self.settings_menu.add_separator()
-        self.settings_menu.add_command(label="Click To Change Theme", command=self.toggle_theme)
+        self.settings_menu.add_command(label=f"Switch To {new_mode}", command=self.toggle_theme)
 
         # Settings button
         self.settings_button = ctk.CTkButton(self, text="", image=self.SETTINGS_ICON, width=40, height=28)
@@ -135,14 +152,6 @@ class CalculatorView(ctk.CTk):
         text_widget = ctk.CTkTextbox(self.history_window, width=480, height=350, wrap="word", font=("Arial", 14))
         text_widget.pack(pady=10, padx=10, fill="both", expand=True)
 
-        # # Read the text file and insert its content
-        # try:
-        #     with open("history.txt", "r", encoding="utf-8") as file:
-        #         text_content = file.read()
-        #         text_widget.insert("1.0", text_content)
-        # except FileNotFoundError:
-        #     text_widget.insert("1.0", "File not found!")
-
         # Get the history from the model and insert it
         history_text = self.controller.model.get_history()
         text_widget.insert("1.0", history_text if history_text else "No history available.")
@@ -156,8 +165,8 @@ class CalculatorView(ctk.CTk):
             ["CE", "ANS", "DEL", "="],
             ["1", "2", "3", "+"],
             ["4", "5", "6", "-"],
-            ["7", "8", "9", "*"],
-            [".", "0", ",", "/"],
+            ["7", "8", "9", "x"],
+            [".", "0", " +/- ", "/"],
             ["M+", "M-"],
         ]
         self.create_button_grid(button_layout)
@@ -169,8 +178,8 @@ class CalculatorView(ctk.CTk):
             ["CE", "ANS", "DEL", "=","sin", "cos", "tan", "exp"],
             ["1", "2", "3" ,"+","sinh", "cosh", "tanh", "expm1"],
             ["4", "5", "6","-","log", "log2", "log10", "factorial"],
-            ["7", "8", "9","*","radians","abs", "sqrt", "degrees"],
-            [".", "0", ",", "/","e", "pi","(", ")"],
+            ["7", "8", "9","x","radians","abs", "sqrt", "degrees"],
+            [".", "0", " +/- ", "/","e", "pi","(", ")"],
             ["M+", "M-" ,"USD-GHS", "GHS-USD"],
         ]
         self.create_button_grid(button_layout, scientific=True)
@@ -264,11 +273,29 @@ class CalculatorView(ctk.CTk):
         except tk.TclError:
             pass
 
+    # def toggle_theme(self):
+    #     current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
+    #     new_mode = "Light" if current_mode == "Dark" else "Dark"
+    #     ctk.set_appearance_mode(new_mode)
+    #     # Update the settings menu to reflect the new mode 
+    #     self.settings_menu.configure(5, label=f"Switch To {new_mode}")
+
+    #     messagebox.showinfo("THEME", f"Theme switched to {current_mode} Mode")
+
     def toggle_theme(self):
-        current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
-        new_mode = "Light" if current_mode == "Dark" else "Dark"
-        ctk.set_appearance_mode(new_mode)
-        messagebox.showinfo("THEME", f"Theme switched to {new_mode} Mode")
+        # Get the current appearance mode using ctk
+        current_mode = ctk.get_appearance_mode()  # Returns "Light" or "Dark" 
+        new_mode = "Light" if current_mode == "Dark" else "Dark"  # Determines the new mode
+        ctk.set_appearance_mode(new_mode) # Set the new appearance mode
+        # The setting menu label for toggling theme is set to "Switch to Light mode" when in dark mode and vice versa
+        new_label = "Switch to Dark Mode" if new_mode == "Light" else "Switch to Light Mode"
+        
+        # Update the settings menu entry; index 6 is the theme toggle command (0-indexed)
+        # (0: Copy, 1: Cut, 2: Paste, 3: separator, 4: Clear History, 5: separator, 6: Theme Toggle)
+        self.settings_menu.entryconfigure(6, label=new_label)
+        messagebox.showinfo("Theme", f"Theme switched to {new_mode} Mode")
+
+
 
     def start_loading_animation(self):
         self.loading = True

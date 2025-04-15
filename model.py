@@ -27,7 +27,7 @@ class CalculatorModel:
     def evaluate(self, expression):
         try:
             # Remove commas and currency symbols to prevent eval() from misinterpreting the formatted result
-            expression = expression.replace(",", "").replace("₵", "").replace("$", "")
+            expression = expression.replace(",", "").replace("₵", "").replace("$", "").replace("x", "*")
             if not expression.strip():  # If the expression is empty or only spaces
                 return 0  # Return 0 instead of evaluating
             result = eval(expression, {"__builtins__": None}, {

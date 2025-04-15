@@ -1,4 +1,5 @@
 import threading
+import re
 from tkinter import messagebox
 from model import CalculatorModel
 from view import CalculatorView
@@ -26,7 +27,9 @@ class CalculatorController:
             new_text = self.model.delete_last(raw_text)
             formatted_expr = self.view.format_expression(new_text)
             self.view.update_display(formatted_expr) # Deletes the last character
-            
+        elif button_text == " +/- "  :     
+            self.toggle_last_number_sign()
+          
         elif button_text == "ANS":
             ans_text = self.model.recall_memory() # Recalls last result value
             formatted__expression = self.view.format_expression(ans_text)
@@ -47,7 +50,7 @@ class CalculatorController:
             value = self.view.expression.get() 
             self.model.memory_plus(value) 
             self.view.update_display("") #  clear display after adding value for good flow 
-            messagebox.showerror("Memory", f'{value} added to memory!')
+            messagebox.showinfo("Memory", f'{value} added to memory!')
         elif button_text == "M-":
             retrieved = self.model.memory_minus()
             formatted_expression = self.view.format_expression(retrieved)
@@ -73,13 +76,14 @@ class CalculatorController:
             thread.start()
         #appending  Scientific operations with "(" to the existing text so the user will only have to close them with ')'
         elif button_text in SCIENTIFIC_FUNCS:
-            new_text = current_text + button_text + "("
-            formatted_expr = self.view.format_expression(new_text)
-            self.view.update_display(formatted_expr)
+            self.append_to_expression(button_text + "(")
         else:
-            new_text = current_text + button_text
-            formatted_expr = self.view.format_expression(new_text)
-            self.view.update_display(formatted_expr)
+            self.append_to_expression(button_text)
+
+    def append_to_expression(self, text):
+        new_text = self.view.expression.get() + text
+        formatted = self.view.format_expression(new_text)
+        self.view.update_display(formatted)
 
     #Conversion methods
     def convert_usd_to_ghs(self, usd_value):
@@ -104,6 +108,57 @@ class CalculatorController:
         self.view.stop_loading_animation()
         self.view.update_display(result_text)
 
+    def on_theme_toggle(self): # Toggles the theme for the calculator 
+        self.view.toggle_theme()
+
+    def toggle_last_number_sign(self):
+        current_expr = self.view.expression.get().replace(",", "")
+        if not current_expr:
+            return
+
+        # Match patterns ending in a number or expression in parentheses (e.g., sin(40))
+        # We find the *last* part of the expression that could be negated.
+        # Examples:
+        # - 100 -> (-100)
+        # - 100 + 2 -> 100 + (-2)
+        # - sin(40) -> sin(-40)
+        # - sqrt(16) -> sqrt(-16)
+
+        # This regex captures the last number or inner expression that should be negated.
+        pattern = r'(.*?)(\b(?:sin|cos|tan|log|sqrt|exp|abs|factorial|sinh|cosh|tanh|expm1|log2|log10|radians|degrees)\s*\(\s*)(-?\s*[^()]+)(\))$'
+        match = re.match(pattern, current_expr)
+
+        if match:
+            # Negate the value inside the function call
+            before_func, func_call, value, closing = match.groups()
+            if value.strip().startswith('-'):
+                value = value.strip()[1:]  # Remove the negative sign
+            else:
+                value = '-' + value.strip()
+            new_expr = before_func + func_call + value + closing
+        else:
+            # Try to match the last numeric expression
+            pattern2 = r'(.*?)(\(?-?\d*\.?\d+\)?)(\s*)$'
+            match2 = re.match(pattern2, current_expr)
+            if match2:
+                before, number, space = match2.groups()
+                number = number.strip()
+                if number.startswith('(-'):
+                    number = number[2:-1]  # Remove wrapping (-x)
+                elif number.startswith('-'):
+                    number = number[1:]  # Remove just the -
+                else:
+                    number = f"(-{number})"
+                new_expr = before + number + space
+            else:
+                # Nothing to toggle
+                return
+
+        # Update the display
+        formatted = self.view.format_expression(new_expr)
+        self.view.update_display(formatted)
+        
+
     #Clears the history notifies the user when the "clear History button is clicked"
     def clear_history(self):
         # Ask the user to confirm deletion
@@ -115,6 +170,8 @@ class CalculatorController:
                 self.view.history_window.destroy()
                 del self.view.history_window  # Optionally remove the attribute
             messagebox.showinfo("History", "Calculation history cleared successfully!")
+
+
 
     def run(self):
         self.view.mainloop()
