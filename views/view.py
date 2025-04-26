@@ -65,19 +65,22 @@ class CalculatorView(ctk.CTk):
 
 
         # Entry widget for expression / results
-        self.expression = ctk.StringVar()
-        """ Using validating command to prevent random entry into the calculator so only that numbers and simple operations 
-        can be entered from the keyboard and the cursor can still be used to navigate expression on the screen for seamless user experience 
-         rather than simply configuring the entry state to 'disabled' which make app too rigid such that if there is a slight mis-entered value
-          user need to delete to the part to correct the experession instead of sinmply moving the curser to that specific character. """
-        # Create validation command        
-        validating_entry_input = (self.register(self.validate_input), "%P")
+        self.expression = ctk.StringVar()   
+        # validating_entry_input = (self.register(self.validate_input), "%P")
+        
         self.entry = ctk.CTkEntry(
             self, textvariable=self.expression, font=("Lucida Console", 24),
             height=60, corner_radius=10, justify="right",
-            validate="key", validatecommand=validating_entry_input
+            # validate="key", validatecommand=validating_entry_input
         )
         self.entry.pack(fill="both", padx=10, pady=10)
+
+        # Bind every keypress on the entry to our handler
+        # ← This line intercepts all typed keys and routes them to on_key_press
+        self.entry.bind("<Key>", self.on_key_press)
+        # Bind key release to format the expression with commas
+        # ← Restores thousand comma formatting after each key press
+        self.entry.bind("<KeyRelease>", self.on_key_release)
 
 
         current_mode = ctk.get_appearance_mode()  # Get current mode ("Light" or "Dark")
@@ -253,10 +256,40 @@ class CalculatorView(ctk.CTk):
         menu.add_command(label="Clear History", command=self.controller.clear_history)
         menu.tk_popup(event.x_root, event.y_root)
 
-    #validation command that allows only digits, basic arithmetic operators, parentheses, and a decimal point.
+
+    """ Using on_key_press to validate input and prevent random entry into the calculator, only that integers and simple operations 
+        can be entered from the keyboard and the cursor can still be used to navigate expression on the screen for seamless user experience 
+         rather than simply configuring the entry state to 'disabled' which make app too rigid such that if there is a slight mis-entered value
+          user need to delete the experession to the part to correct the experession instead of sinmply moving the curser to that specific character. """
+    # This function is called when a key is pressed in the entry widget.
+    # It filters the input to allow only valid characters (digits, operators, parentheses).
+    def on_key_press(self, event):
+        # Allow only digits, + - * / . ( )
+        if re.fullmatch(r"[0-9+\-*/().]", event.char):
+            return  # allow insertion
+        # Allow navigation and control keys
+        if event.keysym in ("BackSpace", "Delete", "Left", "Right", "Return", "Escape"):
+            return
+        # Block anything else
+        return "break"
+    
+    def on_key_release(self, _event):
+    # After keypress, format expression with commas and maintain cursor position
+        current_expression = self.expression.get()
+        formatted_expression = self.format_expression(current_expression)
+        cursor_pos = self.entry.index(tk.INSERT)
+        self.expression.set(formatted_expression)
+        try:
+            self.entry.icursor(cursor_pos)
+        except Exception:
+            pass
+
+
     def validate_input(self, new_text):
+        # Retained for programmatic updates; user typing is filtered by on_key_press and allows only digits, basic arithmetic operators, parentheses, and a decimal point.
         valid_chars = re.compile(r"^[0-9+\-*/().]*$")
         return new_text == "" or bool(valid_chars.fullmatch(new_text))
+
 
     def copy_text(self):
         self.clipboard_clear()

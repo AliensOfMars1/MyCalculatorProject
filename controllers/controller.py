@@ -46,11 +46,17 @@ class CalculatorController:
                 self.view.update_display(display_text)    
             except TypeError: 
                 self.view.update_display("") #returns an empty screen whiles/after the model handles the Error returning a user-friendly message
-        elif button_text == "M+":   
-            value = self.view.expression.get() 
-            self.model.memory_plus(value) 
-            self.view.update_display("") #  clear display after adding value for good flow 
+
+        elif button_text == "M+":
+            value = self.view.expression.get().strip()
+            if not value:
+                messagebox.showinfo("Memory", "Nothing to add. Please enter a value first.")
+                return
+            # Optional: you could also validate that value is a number here
+            self.model.memory_plus(value)
+            self.view.update_display("")  # clear display after adding value for good flow
             messagebox.showinfo("Memory", f'{value} added to memory!')
+    
         elif button_text == "M-":
             retrieved = self.model.memory_minus()
             formatted_expression = self.view.format_expression(retrieved)
