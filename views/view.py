@@ -106,6 +106,7 @@ class CalculatorView(ctk.CTk):
         self.settings_menu.add_command(label="Clear History", command=self.controller.clear_history)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(label=f"Switch To {new_mode}", command=self.toggle_theme)
+        self.settings_menu.add_command(label="HELP", command=self.show_help_window)
 
         # Settings button
         self.settings_button = ctk.CTkButton(self, text="", image=self.SETTINGS_ICON, width=40, height=28)
@@ -160,6 +161,28 @@ class CalculatorView(ctk.CTk):
         text_widget.insert("1.0", history_text if history_text else "No history available.")
 
         text_widget.configure(state="disabled") # Make the text read-only
+
+    def show_help_window(self):
+        # Check if the toplevel window already exists
+        if hasattr(self, "help_window") and self.help_window.winfo_exists():
+            self.help_window.lift() # Bring it to the front
+            return  # Exit the function if the window is already open
+        self.help_window = ctk.CTkToplevel()
+        self.help_window.title("Help")
+        self.help_window.geometry("680x550+200+40")
+        # Set the window as transient so it stays on top of the main window
+        self.help_window.transient(self)
+        self.help_window.attributes("-topmost", True)  # Forces it to be on top
+        self.help_window.lift() # Bring to front
+        self.help_window.focus_force()
+        # Create a scrollable textbox
+        text_widget = ctk.CTkTextbox(self.help_window, width=480, height=350, wrap="word", font=("Arial", 14))
+        text_widget.pack(pady=10, padx=10, fill="both", expand=True)   
+                # Get the history from the model and insert it
+        
+        text_widget.insert("1.0", CONSTS.HELP_TEXT )
+
+        text_widget.configure(state="disabled") # Make the text read-only     
 
 # Function to create standard/basic buttons and memory [M+, M-] buttons.
     def create_standard_buttons(self):
